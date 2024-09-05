@@ -1,4 +1,4 @@
-package hello_tyr
+package hellope_tyr
 
 import "core:testing"
 

@@ -2,83 +2,124 @@ package tyr
 
 import rl "vendor:raylib"
 
+plugin :: proc(app: ^app)
+
+init_step :: struct {
+	resources: ^resources,
+	scheduler: ^scheduler,
+}
+
+start_step :: struct {
+	resources: ^resources,
+	scheduler: ^scheduler,
+}
+
+update_step :: struct {
+	resources: ^resources,
+	scheduler: ^scheduler,
+}
+
+fixed_update_step :: struct {
+	resources: ^resources,
+	scheduler: ^scheduler,
+}
+
+stop_step :: struct {
+	resources: ^resources,
+	scheduler: ^scheduler,
+}
+
+deinit_step :: struct {
+	resources: ^resources,
+	scheduler: ^scheduler,
+}
+
+app_quit :: struct {
+	resources: ^resources,
+	scheduler: ^scheduler,
+}
+
 app :: struct {
-	auto_delete:                    bool,
-	is_running:                     bool,
-	clear_color:                    rl.Color,
-	start_fullscreen:               bool,
-	start:                          proc(app: ^app),
-	toggle_fullscreen_on_alt_enter: bool,
-	update:                         proc(app: ^app, dt: f32),
-	fixed_time_step:                f32,
-	fixed_update:                   proc(app: ^app, dt: f32),
+	is_running:             bool,
+	fixed_time_step:        f32,
+	fixed_time_accumulator: f32,
+	plugins:                map[plugin]bool,
+	resources:              resources,
+	scheduler:              scheduler,
 }
 
 app_new :: proc() -> app {
-	return app {
-		auto_delete = true,
-		clear_color = rl.BLACK,
-		start_fullscreen = true,
-		start = proc(app: ^app) {},
-		toggle_fullscreen_on_alt_enter = true,
-		update = proc(app: ^app, dt: f32) {},
-		fixed_time_step = 1.0 / 60.0,
-		fixed_update = proc(app: ^app, dt: f32) {},
-	}
+	return app{fixed_time_step = 1.0 / 60.0}
 }
 
 app_delete :: proc(app: ^app) {
+	delete(app.plugins)
+	delete(app.resources)
+	delete(app.scheduler)
 }
 
-@(private = "file")
-fixed_time_accumulator: f32
 
-app_run :: proc(app: ^app) {
-	rl.SetTraceLogLevel(.WARNING)
-	config_flags: rl.ConfigFlags = {.WINDOW_RESIZABLE}
-	if app.start_fullscreen {
-		config_flags |= rl.ConfigFlags{.FULLSCREEN_MODE}
-	}
-	rl.SetConfigFlags(config_flags)
-	rl.InitWindow(1920, 1080, "")
-	rl.SetExitKey(.KEY_NULL)
-
-	app.is_running = true
-	app.start(app)
-
-	for app.is_running {
+app_run :: proc(a: ^app) {
+	a.is_running = true
+	resources_set(&a.resources, ^app, a)
+	app_add_systems(a, app_quit, proc(#by_ptr e: app_quit) {
+		maybe_app, ok := resources_get(e.resources, ^app)
+		if ok {
+			maybe_app^.is_running = false
+		}
+	})
+	scheduler_dispatch(
+		&a.scheduler,
+		init_step,
+		init_step{resources = &a.resources, scheduler = &a.scheduler},
+	)
+	scheduler_dispatch(
+		&a.scheduler,
+		start_step,
+		start_step{resources = &a.resources, scheduler = &a.scheduler},
+	)
+	for a.is_running {
 		free_all(context.temp_allocator)
 
-		if rl.WindowShouldClose() {
-			app.is_running = false
-			break
-		}
-
-		if app.toggle_fullscreen_on_alt_enter {
-			if rl.IsKeyDown(.LEFT_ALT) && rl.IsKeyPressed(.ENTER) {
-				rl.ToggleFullscreen()
-			}
-		}
-
-		rl.BeginDrawing()
-
-		rl.ClearBackground(app.clear_color)
+		scheduler_dispatch(
+			&a.scheduler,
+			update_step,
+			update_step{resources = &a.resources, scheduler = &a.scheduler},
+		)
 
 		dt := rl.GetFrameTime()
-
-		fixed_time_accumulator += dt
-		for fixed_time_accumulator >= app.fixed_time_step {
-			app.fixed_update(app, app.fixed_time_step)
-			fixed_time_accumulator -= app.fixed_time_step
+		a.fixed_time_accumulator += dt
+		for a.fixed_time_accumulator >= a.fixed_time_step {
+			scheduler_dispatch(
+				&a.scheduler,
+				fixed_update_step,
+				fixed_update_step{resources = &a.resources, scheduler = &a.scheduler},
+			)
+			a.fixed_time_accumulator -= a.fixed_time_step
 		}
-
-		app.update(app, dt)
-
-		rl.EndDrawing()
 	}
-	rl.CloseWindow()
+	scheduler_dispatch(
+		&a.scheduler,
+		stop_step,
+		stop_step{resources = &a.resources, scheduler = &a.scheduler},
+	)
+	scheduler_dispatch(
+		&a.scheduler,
+		deinit_step,
+		deinit_step{resources = &a.resources, scheduler = &a.scheduler},
+	)
+}
 
-	if (app.auto_delete) {
-		app_delete(app)
+app_add_plugins :: proc(app: ^app, plugins: ..plugin) {
+	for plugin in plugins {
+		if app.plugins[plugin] {
+			continue
+		}
+		app.plugins[plugin] = true
+		plugin(app)
 	}
+}
+
+app_add_systems :: proc(app: ^app, $t_event: typeid, systems: ..proc(#by_ptr arg: t_event)) {
+	scheduler_add_systems(&app.scheduler, t_event, ..systems)
 }
