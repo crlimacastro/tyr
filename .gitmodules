@@ -1,0 +1,3 @@
+[submodule "odin-ecs"]
+	path = odin-ecs
+	url = https://github.com/NoahR02/odin-ecs.git
