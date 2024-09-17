@@ -1,0 +1,47 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build_example",
+            "type": "shell",
+            "command": "odin",
+            "args": ["build", "examples/${input:example_name}"],
+            "group": {
+                "kind": "build",
+                "isDefault": true,
+            },
+        },
+        {
+            "label": "run_example",
+            "type": "shell",
+            "command": "odin",
+            "args": ["run", "examples/${input:example_name}"],
+        },
+        {
+            "label": "debug_build_example",
+            "type": "shell",
+            "command": "odin",
+            "args": ["build", "examples/${input:example_name}", "-debug"],
+            "group": {
+                "kind": "build",
+                "isDefault": false,
+            },
+        },
+        {
+            "label": "debug_run_example",
+            "type": "shell",
+            "command": "odin",
+            "args": ["run", "examples/${input:example_name}", "-debug"],
+        },
+    ],
+    "inputs": [
+        {
+            "id": "example_name",
+            "type": "promptString",
+            "description": "Enter the example to run (the name of a subdirectory in \"examples/\")",
+            "default": "hellope_tyr"
+        }
+    ]
+}
