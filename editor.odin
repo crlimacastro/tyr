@@ -1,5 +1,6 @@
 package tyr
 
+import "base:intrinsics"
 import "base:runtime"
 import "core:fmt"
 import "core:mem"
@@ -112,12 +113,14 @@ editor_draw_obj :: proc(#by_ptr step: editor_step, type: typeid, obj: rawptr) {
 		field_tag := field_tags[i]
 		field := reflect.struct_field_by_name(type, field_name)
 
-		obj_deref_able_ptr := cast([^]type_of(obj))obj
-		if obj_deref_able_ptr == nil {continue}
-		field_obj := mem.ptr_offset(obj_deref_able_ptr, field.offset)
-		if field_obj == nil {continue}
+		obj_any := any {
+			obj,
+			type,
+		}
+		field_val_any := reflect.struct_field_value(obj_any, field)
+		if field_val_any == nil {continue}
 		if ui_tree_node(step.ui, field_name) {
-			editor_draw_obj(step, field_type_info.id, field_obj)
+			editor_draw_obj(step, field_type_info.id, field_val_any.data)
 			ui_tree_pop(step.ui)
 		}
 	}
@@ -129,7 +132,8 @@ editor_inspector_window_system :: proc(#by_ptr step: editor_step) {
 		   ecs_entity_is_valid(step.ecs_ctx, step.editor.selection.selected_entity) {
 			for info in ecs_get_components_of_entity(
 				step.ecs_ctx,
-				step.editor.selection.selected_entity, context.temp_allocator
+				step.editor.selection.selected_entity,
+				context.temp_allocator,
 			) {
 				label := fmt.tprintf("%s", info.id)
 				if ui_tree_node(step.ui, label) {

@@ -231,6 +231,50 @@ imgui_ui :: proc() -> ui {
 				imgui_ui_color_edit_flags_to_im_color_edit_flags(flags),
 			)
 		},
+		drag_int = proc(
+			data: rawptr,
+			label: string,
+			v: ^i32,
+			v_speed: f32 = 1,
+			v_min: i32 = 0,
+			v_max: i32 = 0,
+			format: string = "%d",
+			flags: ui_slider_flags = {},
+		) -> bool {
+			label_cstr := strings.clone_to_cstring(label, context.temp_allocator)
+			format_cstr := strings.clone_to_cstring(format, context.temp_allocator)
+			return im.DragInt(
+				label_cstr,
+				v,
+				v_speed,
+				v_min,
+				v_max,
+				format_cstr,
+				imgui_ui_slider_flags_to_im_slider_flags(flags),
+			)
+		},
+		drag_int3 = proc(
+			data: rawptr,
+			label: string,
+			v: ^[3]i32,
+			v_speed: f32 = 1,
+			v_min: i32 = 0,
+			v_max: i32 = 0,
+			format: string = "%d",
+			flags: ui_slider_flags = {},
+		) -> bool {
+			label_cstr := strings.clone_to_cstring(label, context.temp_allocator)
+			format_cstr := strings.clone_to_cstring(format, context.temp_allocator)
+			return im.DragInt3(
+				label_cstr,
+				v,
+				v_speed,
+				v_min,
+				v_max,
+				format_cstr,
+				imgui_ui_slider_flags_to_im_slider_flags(flags),
+			)
+		},
 		drag_float = proc(
 			data: rawptr,
 			label: string,

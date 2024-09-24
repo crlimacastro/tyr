@@ -56,7 +56,7 @@ visibility :: distinct bool
 renderer :: struct {
 	data:        rawptr,
 	load_texture: proc(data: rawptr, filename: string) -> texture,
-	draw_sprite: proc(data: rawptr, sprite: ^sprite, position: vec2 = {}, scale: vec2 = {1, 1}, tint: color = white),
+	draw_sprite: proc(data: rawptr, sprite: ^sprite, position: vec2 = {}, rotation: fp = 0, scale: vec2 = {1, 1}, tint: color = white),
 }
 
 renderer_load_texture :: proc(renderer: ^renderer, filename: string) -> texture {
@@ -67,10 +67,11 @@ renderer_draw_sprite :: proc(
 	renderer: ^renderer,
 	sprite: ^sprite,
 	position: vec2 = {},
+	rotation: fp = 0,
 	scale: vec2 = {1, 1},
 	tint: color = white,
 ) {
-	renderer.draw_sprite(renderer.data, sprite, position, scale, tint)
+	renderer.draw_sprite(renderer.data, sprite, position, rotation, scale, tint)
 }
 
 rendering_step :: struct {
@@ -114,6 +115,7 @@ rendering_draw_sprites_system :: proc(#by_ptr step: rendering_step) {
 	for e in ecs_tquery(step.ecs_ctx, {sprite}) {
 		sprite, _ := ecs_get_component(step.ecs_ctx, e, sprite)
 		position: vec2
+		rotation: fp
 		scale: vec2 = {1, 1}
 		is_visible := true
 		if visibility, ok := ecs_get_component(step.ecs_ctx, e, visibility); ok {
@@ -125,8 +127,9 @@ rendering_draw_sprites_system :: proc(#by_ptr step: rendering_step) {
 
 		if transform, ok := ecs_get_component(step.ecs_ctx, e, transform); ok {
 			position = transform.translation.xy
+			rotation = transform.rotation.z
 			scale = { transform.scale.x, transform.scale.y }
 		}
-		step.renderer.draw_sprite(step.renderer.data, sprite, position, scale, sprite.tint)
+		step.renderer.draw_sprite(step.renderer.data, sprite, position, rotation, scale, sprite.tint)
 	}
 }

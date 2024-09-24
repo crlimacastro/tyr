@@ -3,6 +3,7 @@ package tyr
 import "core:c"
 import "core:strings"
 import rl "vendor:raylib"
+import "vendor:raylib/rlgl"
 
 input_keyboard_key_to_rl_keyboard_key := map[keyboard_key]rl.KeyboardKey {
 	.key_null      = .KEY_NULL,
@@ -225,10 +226,15 @@ raylib_renderer :: proc() -> renderer {
 			data: rawptr,
 			sprite: ^sprite,
 			position: vec2,
+			rotation: fp = 0,
 			scale: vec2 = {1, 1},
 			tint: color,
 		) {
 			rl_texture := rendering_texture_to_rl_texture(sprite.texture)
+			rlgl.PushMatrix()
+			rlgl.Rotatef(rotation, 0, 0, 1)
+			rlgl.Translatef(position.x, position.y, 0)
+			rlgl.Scalef(scale.x, scale.y, 1)
 			rl.DrawTexturePro(
 				rl_texture,
 				rl.Rectangle {
@@ -238,15 +244,16 @@ raylib_renderer :: proc() -> renderer {
 					height = fp(rl_texture.height),
 				},
 				rl.Rectangle {
-					x = position.x,
-					y = position.y,
-					width = fp(sprite.texture.width) * scale.x,
-					height = fp(sprite.texture.height) * scale.y,
+					x = 0,
+					y = 0,
+					width = fp(sprite.texture.width),
+					height = fp(sprite.texture.height),
 				},
-				rl.Vector2{0, 0},
+				rl.Vector2{fp(sprite.texture.width) / 2, fp(sprite.texture.height) / 2},
 				0,
 				transmute(rl.Color)(tint),
 			)
+			rlgl.PopMatrix()
 		}}
 }
 

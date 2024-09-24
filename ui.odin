@@ -137,6 +137,8 @@ ui :: struct {
 	tree_node: proc(data: rawptr, label: string) -> bool,
 	tree_pop:  proc(data: rawptr),
 	color_edit_4 : proc(data: rawptr, label: string, col: ^[4]fp, flags: ui_color_edit_flags = {}) -> bool,
+	drag_int : proc(data: rawptr, label: string, v: ^i32, v_speed: f32 = 1, v_min: i32 = 0, v_max: i32 = 0, format: string = "%d", flags: ui_slider_flags = {}) -> bool,
+	drag_int3 : proc(data: rawptr, label: string, v: ^[3]i32, v_speed: f32 = 1, v_min: i32 = 0, v_max: i32 = 0, format: string = "%d", flags: ui_slider_flags = {}) -> bool,
 	drag_float : proc(data: rawptr, label: string, v: ^fp, v_speed: fp = 1.0, v_min: fp = 0.0, v_max: fp = 0.0, format: string = "%.3f", flags: ui_slider_flags = {}) -> bool,
 	drag_float3 : proc(data: rawptr, label: string, v: ^[3]fp, v_speed: fp = 1.0, v_min: fp = 0.0, v_max: fp = 0.0, format: string = "%.3f", flags: ui_slider_flags = {}) -> bool,
 	dockspace_over_viewport : proc(data: rawptr, id: string, flags: ui_dock_node_flags = {}),
@@ -181,6 +183,14 @@ ui_tree_pop :: proc(ui: ^ui) {
 
 ui_color_edit_4 :: proc(ui: ^ui, label: string, col: ^[4]fp, flags: ui_color_edit_flags = {}) -> bool {
 	return ui.color_edit_4(ui.data, label, col, flags)
+}
+
+ui_drag_int :: proc(ui: ^ui, label: string, v: ^i32, v_speed: f32 = 1, v_min: i32 = 0, v_max: i32 = 0, format: string = "%d", flags: ui_slider_flags = {}) -> bool {
+	return ui.drag_int(ui.data, label, v, v_speed, v_min, v_max, format, flags)
+}
+
+ui_drag_int3 :: proc(ui: ^ui, label: string, v: ^[3]i32, v_speed: f32 = 1, v_min: i32 = 0, v_max: i32 = 0, format: string = "%d", flags: ui_slider_flags = {}) -> bool {
+	return ui.drag_int3(ui.data, label, v, v_speed, v_min, v_max, format, flags)
 }
 
 ui_drag_float :: proc(ui: ^ui, label: string, v: ^fp, v_speed: fp = 1.0, v_min: fp = 0.0, v_max: fp = 0.0, format: string = "%.3f", flags: ui_slider_flags = {}) -> bool {
