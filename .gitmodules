@@ -1,3 +1,6 @@
 [submodule "odin-ecs"]
 	path = odin-ecs
 	url = https://github.com/NoahR02/odin-ecs.git
+[submodule "odin-imgui"]
+	path = odin-imgui
+	url = https://gitlab.com/L-4/odin-imgui.git
