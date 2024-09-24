@@ -1,75 +1,39 @@
 package tyr
 
+import "base:runtime"
 import "core:fmt"
+import "core:mem"
 import "core:reflect"
-import "core:strings"
-import ecs "odin-ecs"
-import mu "vendor:microui"
-import rl "vendor:raylib"
 
 name :: distinct string
 
-editor_step :: struct {
-	using step: app_step,
-	mu_ctx:     ^mu.Context,
+entity_selection :: struct {
+	is_entity_selected: bool,
+	selected_entity:    entity,
 }
 
-editor_state :: struct {
-	type_drawers:    map[typeid]proc(ctx: ^mu.Context, res: rawptr),
-	selected_entity: ecs.Entity_And_Some_Info,
+type_drawer :: proc(ui: ^ui, obj: rawptr)
+editor :: struct {
+	type_drawers: map[typeid]type_drawer,
+	selection:    entity_selection,
 }
 
-editor_register_drawer :: proc(
-	res: ^resources,
-	$t: typeid,
-	drawer: proc(ctx: ^mu.Context, res: rawptr),
-) {
-	state, ok := resources_get(res, editor_state)
+editor_register_drawer :: proc(res: ^resources, $t: typeid, drawer: proc(ui: ^ui, obj: rawptr)) {
+	editor, ok := resources_get(res, editor)
 	if !ok {return}
-	state.type_drawers[t] = drawer
+	editor.type_drawers[t] = drawer
 }
+
+editor_step :: struct {
+	using ui_step: ui_step,
+	editor:        ^editor,
+}
+
 
 editor_plugin :: proc(app: ^app) {
 	app_add_plugins(app, ui_plugin)
-	resources_set(&app.resources, editor_state, editor_state{})
-	editor_register_drawer(&app.resources, clear_color, proc(ctx: ^mu.Context, res: rawptr) {
-		clear_color := cast(^clear_color)res
-		color_picker_rgb(ctx, &clear_color.r, &clear_color.g, &clear_color.b)
-	})
-	editor_register_drawer(&app.resources, editor_state, proc(ctx: ^mu.Context, res: rawptr) {
-		state := cast(^editor_state)res
-		label := "none"
-		if state.selected_entity.is_valid {
-			label = fmt.tprint(state.selected_entity.entity)
-		}
-		mu.layout_row(ctx, []i32{0, 0})
-		mu.label(ctx, "selected entity:")
-		mu.text(ctx, label)
-	})
-	editor_register_drawer(&app.resources, name, proc(ctx: ^mu.Context, res: rawptr) {
-		n := cast(^name)res
-		mu.text(ctx, string(n^))
-	})
-	editor_register_drawer(&app.resources, rl.Transform, proc(ctx: ^mu.Context, res: rawptr) {
-		transform := cast(^rl.Transform)res
-		mu.layout_row(ctx, []i32{0, 0, 0, 0})
-		mu.label(ctx, "translation")
-		mu.number(ctx, &transform.translation.x, 1.0)
-		mu.number(ctx, &transform.translation.y, 1.0)
-		mu.number(ctx, &transform.translation.z, 1.0)
-		mu.label(ctx, "rotation")
-		euler := rl.QuaternionToEuler(transform.rotation)
-		euler *= rl.RAD2DEG
-		mu.number(ctx, &euler.x, 1.0)
-		mu.number(ctx, &euler.y, 1.0)
-		mu.number(ctx, &euler.z, 1.0)
-		euler *= rl.DEG2RAD
-		transform.rotation = rl.QuaternionFromEuler(euler.x, euler.y, euler.z)
-		mu.label(ctx, "scale")
-		mu.number(ctx, &transform.scale.x, 0.01)
-		mu.number(ctx, &transform.scale.y, 0.01)
-		mu.number(ctx, &transform.scale.z, 0.01)
-	})
+	resources_set(&app.resources, editor{})
+	app_add_plugins(app, editor_drawers_plugin)
 	app_add_systems(app, ui_step, editor_update_system)
 	app_add_systems(
 		app,
@@ -80,183 +44,100 @@ editor_plugin :: proc(app: ^app) {
 	)
 }
 
-CONTEXT_MENU_HEIGHT_PERC :: 0.03
-SCENE_WINDOW_WIDTH_PERC :: 0.2
-
 editor_update_system :: proc(#by_ptr step: ui_step) {
-	if mu.begin_window(
-		step.mu_ctx,
-		"Context Menu",
-		{
-			x = 0,
-			y = 0,
-			w = rl.GetScreenWidth(),
-			h = i32(f32(rl.GetScreenHeight()) * CONTEXT_MENU_HEIGHT_PERC),
-		},
-		{.NO_INTERACT, .NO_CLOSE, .NO_RESIZE, .NO_TITLE},
-	) {
-		context_menu_button_width := i32(f32(rl.GetScreenWidth()) * 0)
-		mu.layout_row(step.mu_ctx, []i32{context_menu_button_width, context_menu_button_width})
-		if mu.button(step.mu_ctx, "File") == {.SUBMIT} {
-			if mu.begin_popup(step.mu_ctx, "File") {
-				if mu.button(step.mu_ctx, "Quit") == {.SUBMIT} {
-					scheduler_dispatch(
-						step.scheduler,
-						app_quit,
-						app_quit {
-							scheduler = step.scheduler,
-							resources = step.resources,
-							ecs_ctx = step.ecs_ctx,
-						},
-					)
-				}
-				mu.end_popup(step.mu_ctx)
-			}
-			mu.open_popup(step.mu_ctx, "File")
-		}
-		if mu.button(step.mu_ctx, "Edit") == {.SUBMIT} {
-		}
-
-		mu.end_window(step.mu_ctx)
+	editor, ok := resources_get(step.resources, editor)
+	if !ok {
+		return
 	}
-	scheduler_dispatch(
-		step.scheduler,
-		editor_step,
-		editor_step {
-			resources = step.resources,
-			scheduler = step.scheduler,
-			mu_ctx = step.mu_ctx,
-			ecs_ctx = step.ecs_ctx,
-		},
-	)
+	ui_dockspace_over_viewport(step.ui, "tyr_editor_dockspace", {.passthru_central_node})
+	scheduler_dispatch(step.scheduler, editor_step, editor_step{ui_step = step, editor = editor})
 }
 
 editor_scene_window_system :: proc(#by_ptr step: editor_step) {
-	pad_top := i32(f32(rl.GetScreenHeight()) * CONTEXT_MENU_HEIGHT_PERC)
-	scene_window_width := i32(f32(rl.GetScreenWidth()) * SCENE_WINDOW_WIDTH_PERC)
-	scene_window_height := i32(f32(rl.GetScreenHeight()) * 1.0) - pad_top
-	if mu.begin_window(
-		step.mu_ctx,
-		"Scene",
-		{0, pad_top, scene_window_width, scene_window_height},
-	) {
-		mu.layout_begin_column(step.mu_ctx)
-		mu.layout_row(step.mu_ctx, []i32{0})
-
-		for e in step.ecs_ctx.entities.entities {
-			label := fmt.tprint(e.entity)
-			n, err := ecs.get_component(step.ecs_ctx, e.entity, name)
-			if err == .NO_ERROR {
-				label = fmt.tprintf("%s (%s)", n^, label)
-			}
-			if mu.button(step.mu_ctx, label) == {.SUBMIT} {
-				state, ok := resources_get(step.resources, editor_state)
+	if ui_begin_window(step.ui, "Scene") {
+		for e in ecs_get_entities(step.ecs_ctx, context.temp_allocator) {
+			label := fmt.tprint(e)
+			{
+				name, ok := ecs_get_component(step.ecs_ctx, e, name)
 				if ok {
-					state.selected_entity = e
+					label = fmt.tprintf("%s (%s)", name^, label)
 				}
 			}
-		}
 
-		mu.layout_end_column(step.mu_ctx)
-		mu.end_window(step.mu_ctx)
+			is_selected :=
+				step.editor.selection.is_entity_selected &&
+				e == step.editor.selection.selected_entity
+			if ui_selectable(step.ui, label, is_selected) {
+				step.editor.selection.is_entity_selected = true
+				step.editor.selection.selected_entity = e
+			}
+		}
 	}
+	ui_end_window(step.ui)
 }
 
 
 editor_resources_window_system :: proc(#by_ptr step: editor_step) {
-	pad_left := i32(f32(rl.GetScreenWidth()) * SCENE_WINDOW_WIDTH_PERC)
-	pad_top := i32(f32(rl.GetScreenHeight()) * CONTEXT_MENU_HEIGHT_PERC)
-	resources_window_width := i32(f32(rl.GetScreenWidth()) * 0.6)
-	resources_window_height := i32(f32(rl.GetScreenHeight()) * 0.2)
-	if mu.begin_window(
-		step.mu_ctx,
-		"Resources",
-		{
-			pad_left,
-			rl.GetScreenHeight() - resources_window_height,
-			resources_window_width,
-			resources_window_height,
-		},
-	) {
-		mu.layout_begin_column(step.mu_ctx)
-		mu.layout_row(step.mu_ctx, []i32{0})
-		state, ok := resources_get(step.resources, editor_state)
-		if !ok {
-			mu.end_window(step.mu_ctx)
-			return
-		}
-
-		for res_type, res_val in step.resources {
-			label_txt := fmt.tprintf("%s", res_type)
-			drawer, ok := state.type_drawers[res_type]
-			if !ok {
-				mu.header(step.mu_ctx, label_txt)
-				continue
-			} else {
-				if mu.header(step.mu_ctx, label_txt, {.EXPANDED}) == {.ACTIVE} {
-					drawer(step.mu_ctx, res_val)
-				}
+	if ui_begin_window(step.ui, "Resources") {
+		for res_type, &res_val in step.resources {
+			label := fmt.tprintf("%s", res_type)
+			if ui_tree_node(step.ui, label) {
+				editor_draw_obj(step, res_type, res_val)
+				ui_tree_pop(step.ui)
 			}
+
 		}
-		mu.layout_end_column(step.mu_ctx)
-		mu.end_window(step.mu_ctx)
+	}
+	ui_end_window(step.ui)
+}
+
+editor_draw_obj :: proc(#by_ptr step: editor_step, type: typeid, obj: rawptr) {
+	drawer, ok := step.editor.type_drawers[type]
+	if ok {
+		drawer(step.ui, obj)
+		return
+	}
+
+	type_info := type_info_of(type)
+	type_info_named, is_named := type_info.variant.(runtime.Type_Info_Named)
+
+	if !is_named {return}
+	type_info_struct, is_struct := type_info_named.base.variant.(runtime.Type_Info_Struct)
+	if !is_struct {return}
+	field_names := reflect.struct_field_names(type)
+	field_type_infos := reflect.struct_field_types(type)
+	field_tags := reflect.struct_field_tags(type)
+	for field_name, i in field_names {
+		field_type_info := field_type_infos[i]
+		field_tag := field_tags[i]
+		field := reflect.struct_field_by_name(type, field_name)
+
+		obj_deref_able_ptr := cast([^]type_of(obj))obj
+		if obj_deref_able_ptr == nil {continue}
+		field_obj := mem.ptr_offset(obj_deref_able_ptr, field.offset)
+		if field_obj == nil {continue}
+		if ui_tree_node(step.ui, field_name) {
+			editor_draw_obj(step, field_type_info.id, field_obj)
+			ui_tree_pop(step.ui)
+		}
 	}
 }
 
 editor_inspector_window_system :: proc(#by_ptr step: editor_step) {
-	pad_top := i32(f32(rl.GetScreenHeight()) * CONTEXT_MENU_HEIGHT_PERC)
-	inspector_window_width := i32(f32(rl.GetScreenWidth()) * 0.2)
-	inspector_window_height := i32(f32(rl.GetScreenHeight()) * 1.0) - pad_top
-	if mu.begin_window(
-		step.mu_ctx,
-		"Inspector",
-		{
-			rl.GetScreenWidth() - inspector_window_width,
-			pad_top,
-			inspector_window_width,
-			inspector_window_height,
-		},
-	) {
-		mu.layout_begin_column(step.mu_ctx)
-		mu.layout_row(step.mu_ctx, []i32{0})
-
-		state, ok := resources_get(step.resources, editor_state)
-		if ok && state.selected_entity.is_valid {
-			{
-				n, err := ecs.get_component(step.ecs_ctx, state.selected_entity.entity, name)
-				if err == .NO_ERROR {
-					if mu.header(step.mu_ctx, fmt.tprintf("%s", typeid_of(name)), {.EXPANDED}) ==
-					   {.ACTIVE} {
-						drawer, ok := state.type_drawers[name]
-						if ok {
-							drawer(step.mu_ctx, n)
-						}
-					}
-				}
-			}
-			{
-				transform, err := ecs.get_component(
-					step.ecs_ctx,
-					state.selected_entity.entity,
-					rl.Transform,
-				)
-				if err == .NO_ERROR {
-					if mu.header(
-						   step.mu_ctx,
-						   fmt.tprintf("%s", typeid_of(rl.Transform)),
-						   {.EXPANDED},
-					   ) ==
-					   {.ACTIVE} {
-						drawer, ok := state.type_drawers[rl.Transform]
-						if ok {
-							drawer(step.mu_ctx, transform)
-						}
-					}
+	if ui_begin_window(step.ui, "Inspector") {
+		if step.editor.selection.is_entity_selected &&
+		   ecs_entity_is_valid(step.ecs_ctx, step.editor.selection.selected_entity) {
+			for info in ecs_get_components_of_entity(
+				step.ecs_ctx,
+				step.editor.selection.selected_entity, context.temp_allocator
+			) {
+				label := fmt.tprintf("%s", info.id)
+				if ui_tree_node(step.ui, label) {
+					editor_draw_obj(step, info.id, info.ptr)
+					ui_tree_pop(step.ui)
 				}
 			}
 		}
-
-		mu.layout_end_column(step.mu_ctx)
-		mu.end_window(step.mu_ctx)
 	}
+	ui_end_window(step.ui)
 }

@@ -1,38 +1,14 @@
 package tyr
 
-import ecs "odin-ecs"
 import rl "vendor:raylib"
 
 plugin :: proc(app: ^app)
 
+// check app_steps.odin for examples of available steps
 app_step :: struct {
 	resources: ^resources,
 	scheduler: ^scheduler,
-	ecs_ctx:   ^ecs.Context,
-}
-
-init_step :: struct {
-	using step: app_step,
-}
-
-start_step :: struct {
-	using step: app_step,
-}
-
-update_step :: struct {
-	using step: app_step,
-}
-
-fixed_update_step :: struct {
-	using step: app_step,
-}
-
-stop_step :: struct {
-	using step: app_step,
-}
-
-deinit_step :: struct {
-	using step: app_step,
+	ecs_ctx:   ^ecs_context,
 }
 
 app_quit :: struct {
@@ -41,29 +17,29 @@ app_quit :: struct {
 
 app :: struct {
 	is_running:             bool,
-	fixed_time_step:        f32,
-	fixed_time_accumulator: f32,
+	fixed_time_step:        fp,
+	fixed_time_accumulator: fp,
 	plugins:                map[plugin]bool,
 	resources:              resources,
 	scheduler:              scheduler,
-	ecs_ctx:                ecs.Context,
+	ecs_ctx:                ecs_context,
 }
 
-app_new :: proc() -> app {
-	return app{fixed_time_step = 1.0 / 60.0, ecs_ctx = ecs.init_ecs()}
+app_init :: proc() -> app {
+	return app{fixed_time_step = 1.0 / 60.0, ecs_ctx = ecs_init()}
 }
 
-app_delete :: proc(a: ^app) {
+app_deinit :: proc(a: ^app) {
 	delete(a.plugins)
 	delete(a.resources)
 	delete(a.scheduler)
-	ecs.deinit_ecs(&a.ecs_ctx)
+	ecs_deinit(&a.ecs_ctx)
 }
 
 
 app_run :: proc(a: ^app) {
 	a.is_running = true
-	resources_set(&a.resources, ^app, a)
+	resources_set(&a.resources, a)
 	app_add_systems(a, app_quit, proc(#by_ptr e: app_quit) {
 		maybe_app, ok := resources_get(e.resources, ^app)
 		if ok {
@@ -128,4 +104,8 @@ app_add_plugins :: proc(a: ^app, plugins: ..plugin) {
 
 app_add_systems :: proc(a: ^app, $t_event: typeid, systems: ..proc(#by_ptr arg: t_event)) {
 	scheduler_add_systems(&a.scheduler, t_event, ..systems)
+}
+
+app_set_resource :: proc(a: ^app, resource: $resource_t) {
+	resources_set(&a.resources, resource)
 }

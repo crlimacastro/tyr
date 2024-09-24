@@ -1,100 +1,132 @@
 package tyr
 
 import ecs "odin-ecs"
-import rl "vendor:raylib"
 
 color :: distinct [4]u8
 
 black :: color{0, 0, 0, 255}
+white :: color{255, 255, 255, 255}
 cornflower_blue :: color{100, 149, 237, 255}
 
 clear_color :: distinct color
 
-rendering_step :: struct {
-	using step: app_step,
+pixel_format :: enum {
+	unknown = 0,
+	uncompressed_grayscale = 1, // 8 bit per pixel (no alpha)
+	uncompressed_gray_alpha, // 8*2 bpp (2 channels)
+	uncompressed_r5g6b5, // 16 bpp
+	uncompressed_r8g8b8, // 24 bpp
+	uncompressed_r5g5b5a1, // 16 bpp (1 bit alpha)
+	uncompressed_r4g4b4a4, // 16 bpp (4 bit alpha)
+	uncompressed_r8g8b8a8, // 32 bpp
+	uncompressed_r32, // 32 bpp (1 channel - float)
+	uncompressed_r32g32b32, // 32*3 bpp (3 channels - float)
+	uncompressed_r32g32b32a32, // 32*4 bpp (4 channels - float)
+	uncompressed_r16, // 16 bpp (1 channel - float)
+	uncompressed_r16g16b16, // 16*3 bpp (3 channels - float)
+	uncompressed_r16g16b16a16, // 16*4 bpp (4 channels - float)
+	compressed_dxt1_rgb, // 4 bpp (no alpha)
+	compressed_dxt1_rgba, // 4 bpp (1 bit alpha)
+	compressed_dxt3_rgba, // 8 bpp
+	compressed_dxt5_rgba, // 8 bpp
+	compressed_etc1_rgb, // 4 bpp
+	compressed_etc2_rgb, // 4 bpp
+	compressed_etc2_eac_rgba, // 8 bpp
+	compressed_pvrt_rgb, // 4 bpp
+	compressed_pvrt_rgba, // 4 bpp
+	compressed_astc_4x4_rgba, // 8 bpp
+	compressed_astc_8x8_rgba, // 2 bpp
 }
 
-rendering_plugin :: proc(app: ^app) {
-	resources_set(&app.resources, clear_color, clear_color(black))
-	app_add_systems(
-		app,
-		update_step,
-		rendering_quit_on_window_should_close_system,
-		rendering_update_system,
-	)
-	app_add_systems(app, rendering_step, render_rectangles)
-	app_add_systems(app, deinit_step, rendering_deinit_system)
+texture :: struct {
+	id:      uint,
+	width:   int, // Image base width
+	height:  int, // Image base height
+	mipmaps: int, // Mipmap levels, 1 by default
+	format:  pixel_format, // Data format (PixelFormat type)
+}
 
-	rl.SetTraceLogLevel(.WARNING)
-	config_flags: rl.ConfigFlags = {.WINDOW_RESIZABLE}
-	// 	config_flags |= rl.ConfigFlags{.FULLSCREEN_MODE}
-	rl.SetConfigFlags(config_flags)
-	rl.InitWindow(1920, 1080, "")
-	rl.SetExitKey(.KEY_NULL)
+sprite :: struct {
+	texture: texture,
+	tint:    color,
+}
+
+visibility :: distinct bool
+
+renderer :: struct {
+	data:        rawptr,
+	load_texture: proc(data: rawptr, filename: string) -> texture,
+	draw_sprite: proc(data: rawptr, sprite: ^sprite, position: vec2 = {}, scale: vec2 = {1, 1}, tint: color = white),
+}
+
+renderer_load_texture :: proc(renderer: ^renderer, filename: string) -> texture {
+	return renderer.load_texture(renderer.data, filename)
+}
+
+renderer_draw_sprite :: proc(
+	renderer: ^renderer,
+	sprite: ^sprite,
+	position: vec2 = {},
+	scale: vec2 = {1, 1},
+	tint: color = white,
+) {
+	renderer.draw_sprite(renderer.data, sprite, position, scale, tint)
+}
+
+rendering_step :: struct {
+	using step: app_step,
+	renderer:   ^renderer,
+}
+
+
+rendering_plugin :: proc(app: ^app) {
+	app_add_plugins(app, raylib_plugin)
+	app_set_resource(app, clear_color(black))
+	app_add_systems(app, update_step, rendering_quit_on_window_should_close_system)
+	app_add_systems(app, raylib_update_step, rendering_update_system)
+	app_add_systems(app, rendering_step, rendering_draw_sprites_system)
 }
 
 rendering_quit_on_window_should_close_system :: proc(#by_ptr step: update_step) {
-	if !rl.WindowShouldClose() {
+	window, ok := resources_get(step.resources, window)
+	if !ok {return}
+	if !window_should_close(window) {return}
+	scheduler_dispatch(
+		step.scheduler,
+		app_quit,
+		app_quit{step=step},
+	)
+}
+
+rendering_update_system :: proc(#by_ptr step: raylib_update_step) {
+	renderer, ok := resources_get(step.resources, renderer)
+	if !ok {
 		return
 	}
 	scheduler_dispatch(
 		step.scheduler,
-		app_quit,
-		app_quit{resources = step.resources, scheduler = step.scheduler},
-	)
-}
-
-rendering_update_system :: proc(#by_ptr step: update_step) {
-	rl.BeginDrawing()
-	defer rl.EndDrawing()
-
-	clear_col := black
-	maybe_clear_color, ok := resources_get(step.resources, clear_color)
-	if ok {
-		clear_col = color(maybe_clear_color^)
-	}
-	rl.ClearBackground(rl.Color(clear_col))
-
-	scheduler_dispatch(
-		step.scheduler,
 		rendering_step,
-		rendering_step {
-			resources = step.resources,
-			scheduler = step.scheduler,
-			ecs_ctx = step.ecs_ctx,
-		},
+		rendering_step{step = step, renderer = renderer},
 	)
 }
 
-render_rectangles :: proc(#by_ptr step: rendering_step) {
-	rects, err := ecs.get_component_list(step.ecs_ctx, rl.Rectangle)
-	if err != .NO_ERROR {return}
-	for rect, i in &rects {
-		e := ecs.Entity(i)
-		translation := rl.Vector2{}
-		rotation: f32 = 0
-		scale := rl.Vector2{1, 1}
-		col := rl.WHITE
-		if transform, err := ecs.get_component(step.ecs_ctx, e, rl.Transform); err == .NO_ERROR {
-			translation = transform.translation.xy
-			euler := rl.QuaternionToEuler(transform.rotation) * rl.RAD2DEG
-			rotation = euler.z
-			scale = transform.scale.xy
+rendering_draw_sprites_system :: proc(#by_ptr step: rendering_step) {
+	for e in ecs_tquery(step.ecs_ctx, {sprite}) {
+		sprite, _ := ecs_get_component(step.ecs_ctx, e, sprite)
+		position: vec2
+		scale: vec2 = {1, 1}
+		is_visible := true
+		if visibility, ok := ecs_get_component(step.ecs_ctx, e, visibility); ok {
+			is_visible = bool(visibility^)
 		}
-		if c, err := ecs.get_component(step.ecs_ctx, e, color); err == .NO_ERROR {
-			col = rl.Color(c^)
+		if !is_visible {
+			continue
 		}
-		width := rect.width * scale.x
-		height := rect.height * scale.y
-		rl.DrawRectanglePro(
-			rl.Rectangle{x = translation.x, y = translation.y, width = width, height = height},
-			rl.Vector2{width / 2, height / 2},
-			rotation,
-			col,
-		)
-	}
-}
 
-rendering_deinit_system :: proc(#by_ptr step: deinit_step) {
-	rl.CloseWindow()
+		if transform, ok := ecs_get_component(step.ecs_ctx, e, transform); ok {
+			position = transform.translation.xy
+			scale = { transform.scale.x, transform.scale.y }
+		}
+		step.renderer.draw_sprite(step.renderer.data, sprite, position, scale, sprite.tint)
+	}
 }

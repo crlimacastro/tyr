@@ -5,7 +5,7 @@ import "core:mem"
 
 resources :: distinct map[typeid]rawptr
 
-resources_set :: proc(res: ^resources, $t: typeid, value: t) {
+resources_set :: proc(res: ^resources, value: $t) {
 	if t not_in res {
 		new_res, err := mem.alloc(size_of(t))
 		if err != .None {
