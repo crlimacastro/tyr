@@ -150,10 +150,3 @@ input_quit_on_escape_system :: proc(#by_ptr step: update_step) {
 		})
 	}
 }
-
-input_debug_quit_on_escape_system :: proc(#by_ptr step: update_step) {
-	when !ODIN_DEBUG {
-		return
-	}
-	input_quit_on_escape_system(step)
-}

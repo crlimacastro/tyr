@@ -10,6 +10,10 @@ cornflower_blue :: color{100, 149, 237, 255}
 
 clear_color :: distinct color
 
+rectangle :: struct {
+	x, y, width, height: fp,
+}
+
 pixel_format :: enum {
 	unknown = 0,
 	uncompressed_grayscale = 1, // 8 bit per pixel (no alpha)
@@ -49,6 +53,15 @@ texture :: struct {
 sprite :: struct {
 	texture: texture,
 	tint:    color,
+	source:  rectangle,
+}
+
+sprite_new :: proc(texture: texture) -> sprite {
+	return {
+		texture = texture,
+		tint = white,
+		source = {0, 0, fp(texture.width), fp(texture.height)},
+	}
 }
 
 visibility :: distinct bool
@@ -56,14 +69,14 @@ visibility :: distinct bool
 renderer :: struct {
 	data:        rawptr,
 	load_texture: proc(data: rawptr, filename: string) -> texture,
-	draw_sprite: proc(data: rawptr, sprite: ^sprite, position: vec2 = {}, rotation: fp = 0, scale: vec2 = {1, 1}, tint: color = white),
+	render_sprite: proc(data: rawptr, sprite: ^sprite, position: vec2 = {}, rotation: fp = 0, scale: vec2 = {1, 1}, tint: color = white),
 }
 
 renderer_load_texture :: proc(renderer: ^renderer, filename: string) -> texture {
 	return renderer.load_texture(renderer.data, filename)
 }
 
-renderer_draw_sprite :: proc(
+renderer_render_sprite :: proc(
 	renderer: ^renderer,
 	sprite: ^sprite,
 	position: vec2 = {},
@@ -71,7 +84,7 @@ renderer_draw_sprite :: proc(
 	scale: vec2 = {1, 1},
 	tint: color = white,
 ) {
-	renderer.draw_sprite(renderer.data, sprite, position, rotation, scale, tint)
+	renderer.render_sprite(renderer.data, sprite, position, rotation, scale, tint)
 }
 
 rendering_step :: struct {
@@ -85,7 +98,7 @@ rendering_plugin :: proc(app: ^app) {
 	app_set_resource(app, clear_color(black))
 	app_add_systems(app, update_step, rendering_quit_on_window_should_close_system)
 	app_add_systems(app, raylib_update_step, rendering_update_system)
-	app_add_systems(app, rendering_step, rendering_draw_sprites_system)
+	app_add_systems(app, rendering_step, rendering_render_sprites_system)
 }
 
 rendering_quit_on_window_should_close_system :: proc(#by_ptr step: update_step) {
@@ -111,7 +124,7 @@ rendering_update_system :: proc(#by_ptr step: raylib_update_step) {
 	)
 }
 
-rendering_draw_sprites_system :: proc(#by_ptr step: rendering_step) {
+rendering_render_sprites_system :: proc(#by_ptr step: rendering_step) {
 	for e in ecs_tquery(step.ecs_ctx, {sprite}) {
 		sprite, _ := ecs_get_component(step.ecs_ctx, e, sprite)
 		position: vec2
@@ -125,11 +138,11 @@ rendering_draw_sprites_system :: proc(#by_ptr step: rendering_step) {
 			continue
 		}
 
-		if transform, ok := ecs_get_component(step.ecs_ctx, e, transform); ok {
-			position = transform.translation.xy
-			rotation = transform.rotation.z
-			scale = { transform.scale.x, transform.scale.y }
+		if transform, ok := ecs_get_component(step.ecs_ctx, e, transform2); ok {
+			position = transform.translation
+			rotation = transform.rotation
+			scale = transform.scale
 		}
-		step.renderer.draw_sprite(step.renderer.data, sprite, position, rotation, scale, sprite.tint)
+		step.renderer.render_sprite(step.renderer.data, sprite, position, rotation, scale, sprite.tint)
 	}
 }

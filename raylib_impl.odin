@@ -222,7 +222,7 @@ raylib_renderer :: proc() -> renderer {
 			filename_cstr := strings.clone_to_cstring(filename, context.temp_allocator)
 			rl_texture := rl.LoadTexture(filename_cstr)
 			return rl_texture_to_rendering_texture(rl_texture)
-		}, draw_sprite = proc(
+		}, render_sprite = proc(
 			data: rawptr,
 			sprite: ^sprite,
 			position: vec2,
@@ -232,23 +232,25 @@ raylib_renderer :: proc() -> renderer {
 		) {
 			rl_texture := rendering_texture_to_rl_texture(sprite.texture)
 			rlgl.PushMatrix()
-			rlgl.Rotatef(rotation, 0, 0, 1)
 			rlgl.Translatef(position.x, position.y, 0)
+			rlgl.Rotatef(rotation, 0, 0, 1)
 			rlgl.Scalef(scale.x, scale.y, 1)
+			src_rect := rl.Rectangle {
+				f32(sprite.source.x),
+				f32(sprite.source.y),
+				f32(sprite.source.width),
+				f32(sprite.source.height),
+			}
+			dst_rect := rl.Rectangle {
+				0,
+				0,
+				f32(sprite.texture.width),
+				f32(sprite.texture.height),
+			}
 			rl.DrawTexturePro(
 				rl_texture,
-				rl.Rectangle {
-					x = 0,
-					y = 0,
-					width = fp(rl_texture.width),
-					height = fp(rl_texture.height),
-				},
-				rl.Rectangle {
-					x = 0,
-					y = 0,
-					width = fp(sprite.texture.width),
-					height = fp(sprite.texture.height),
-				},
+				src_rect,
+				dst_rect,
 				rl.Vector2{fp(sprite.texture.width) / 2, fp(sprite.texture.height) / 2},
 				0,
 				transmute(rl.Color)(tint),

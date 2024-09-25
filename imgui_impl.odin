@@ -253,6 +253,28 @@ imgui_ui :: proc() -> ui {
 				imgui_ui_slider_flags_to_im_slider_flags(flags),
 			)
 		},
+		drag_int2 = proc(
+			data: rawptr,
+			label: string,
+			v: ^[2]i32,
+			v_speed: f32 = 1,
+			v_min: i32 = 0,
+			v_max: i32 = 0,
+			format: string = "%d",
+			flags: ui_slider_flags = {},
+		) -> bool {
+			label_cstr := strings.clone_to_cstring(label, context.temp_allocator)
+			format_cstr := strings.clone_to_cstring(format, context.temp_allocator)
+			return im.DragInt2(
+				label_cstr,
+				v,
+				v_speed,
+				v_min,
+				v_max,
+				format_cstr,
+				imgui_ui_slider_flags_to_im_slider_flags(flags),
+			)
+		},
 		drag_int3 = proc(
 			data: rawptr,
 			label: string,
@@ -275,6 +297,81 @@ imgui_ui :: proc() -> ui {
 				imgui_ui_slider_flags_to_im_slider_flags(flags),
 			)
 		},
+		drag_uint = proc(
+			data: rawptr,
+			label: string,
+			v: ^u32,
+			v_speed: f32 = 1,
+			v_min: u32 = 0,
+			v_max: u32 = 0,
+			format: string = "%u",
+			flags: ui_slider_flags = {},
+		) -> bool {
+			label_cstr := strings.clone_to_cstring(label, context.temp_allocator)
+			format_cstr := strings.clone_to_cstring(format, context.temp_allocator)
+			v_i32 := i32(v^)
+			ret := im.DragInt(
+				label_cstr,
+				&v_i32,
+				v_speed,
+				i32(v_min),
+				i32(v_max),
+				format_cstr,
+				imgui_ui_slider_flags_to_im_slider_flags(flags),
+			)
+			v^ = u32(v_i32)
+			return ret
+		},
+		drag_uint2 = proc(
+			data: rawptr,
+			label: string,
+			v: ^[2]u32,
+			v_speed: f32 = 1,
+			v_min: u32 = 0,
+			v_max: u32 = 0,
+			format: string = "%u",
+			flags: ui_slider_flags = {},
+		) -> bool {
+			label_cstr := strings.clone_to_cstring(label, context.temp_allocator)
+			format_cstr := strings.clone_to_cstring(format, context.temp_allocator)
+			v_i32 := [2]i32{i32(v[0]), i32(v[1])}
+			ret := im.DragInt2(
+				label_cstr,
+				&v_i32,
+				v_speed,
+				i32(v_min),
+				i32(v_max),
+				format_cstr,
+				imgui_ui_slider_flags_to_im_slider_flags(flags),
+			)
+			v^ = [2]u32{u32(v_i32[0]), u32(v_i32[1])}
+			return ret
+		},
+		drag_uint3 = proc(
+			data: rawptr,
+			label: string,
+			v: ^[3]u32,
+			v_speed: f32 = 1,
+			v_min: u32 = 0,
+			v_max: u32 = 0,
+			format: string = "%u",
+			flags: ui_slider_flags = {},
+		) -> bool {
+			label_cstr := strings.clone_to_cstring(label, context.temp_allocator)
+			format_cstr := strings.clone_to_cstring(format, context.temp_allocator)
+			v_i32 := [3]i32{i32(v[0]), i32(v[1]), i32(v[2])}
+			ret := im.DragInt3(
+				label_cstr,
+				&v_i32,
+				v_speed,
+				i32(v_min),
+				i32(v_max),
+				format_cstr,
+				imgui_ui_slider_flags_to_im_slider_flags(flags),
+			)
+			v^ = [3]u32{u32(v_i32[0]), u32(v_i32[1]), u32(v_i32[2])}
+			return ret
+		},
 		drag_float = proc(
 			data: rawptr,
 			label: string,
@@ -288,6 +385,28 @@ imgui_ui :: proc() -> ui {
 			label_cstr := strings.clone_to_cstring(label, context.temp_allocator)
 			format_cstr := strings.clone_to_cstring(format, context.temp_allocator)
 			return im.DragFloat(
+				label_cstr,
+				v,
+				v_speed,
+				v_min,
+				v_max,
+				format_cstr,
+				imgui_ui_slider_flags_to_im_slider_flags(flags),
+			)
+		},
+		drag_float2 = proc(
+			data: rawptr,
+			label: string,
+			v: ^[2]fp,
+			v_speed: fp = 1.0,
+			v_min: fp = 0.0,
+			v_max: fp = 0.0,
+			format: string = "%.3f",
+			flags: ui_slider_flags = {},
+		) -> bool {
+			label_cstr := strings.clone_to_cstring(label, context.temp_allocator)
+			format_cstr := strings.clone_to_cstring(format, context.temp_allocator)
+			return im.DragFloat2(
 				label_cstr,
 				v,
 				v_speed,
