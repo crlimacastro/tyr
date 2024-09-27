@@ -237,6 +237,7 @@ ui :: struct {
 		format: string = "%.3f",
 		flags: ui_slider_flags = {},
 	) -> bool,
+	checkbox:                proc(data: rawptr, label: string, v: ^bool) -> bool,
 	dockspace_over_viewport: proc(data: rawptr, id: string, flags: ui_dock_node_flags = {}),
 	input_text:              proc(
 		data: rawptr,
@@ -417,6 +418,10 @@ ui_drag :: proc {
 	ui_drag_float,
 	ui_drag_float2,
 	ui_drag_float3,
+}
+
+ui_checkbox :: proc(ui: ^ui, label: string, v: ^bool) -> bool {
+	return ui.checkbox(ui.data, label, v)
 }
 
 ui_step :: struct {

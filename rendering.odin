@@ -1,7 +1,5 @@
 package tyr
 
-import ecs "odin-ecs"
-
 color :: distinct [4]u8
 
 black :: color{0, 0, 0, 255}

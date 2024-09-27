@@ -118,6 +118,16 @@ input_keyboard_key_to_rl_keyboard_key := map[keyboard_key]rl.KeyboardKey {
 	.volume_down   = .VOLUME_DOWN,
 }
 
+input_mouse_button_to_rl_mouse_button := map[mouse_button]rl.MouseButton {
+	.left    = .LEFT,
+	.right   = .RIGHT,
+	.middle  = .MIDDLE,
+	.side    = .SIDE,
+	.extra   = .EXTRA,
+	.forward = .FORWARD,
+	.back    = .BACK,
+}
+
 rendering_pixel_format_to_rl_pixel_format := map[pixel_format]rl.PixelFormat {
 	.unknown                   = .UNKNOWN,
 	.uncompressed_grayscale    = .UNCOMPRESSED_GRAYSCALE,
@@ -204,16 +214,44 @@ raylib_window :: proc() -> window {
 			rl.SetWindowTitle(value_cstr)
 		}, should_close = proc(data: rawptr) -> bool {
 			return rl.WindowShouldClose()
-		}, toggle_fullscreen = proc(data: rawptr) {
-			rl.ToggleFullscreen()
+		}, is_fullscreen = proc(data: rawptr) -> bool {
+			return rl.IsWindowFullscreen()
+		}, set_fullscreen = proc(data: rawptr, value: bool) {
+			if rl.IsWindowFullscreen() != value {
+				rl.ToggleFullscreen()
+			}
+		}, get_position = proc(data: rawptr) -> vec2 {
+			return rl.GetWindowPosition()
+		}, get_size = proc(data: rawptr) -> vec2 {
+			return vec2{fp(rl.GetScreenWidth()), fp(rl.GetScreenHeight())}
+		}, set_position = proc(data: rawptr, value: vec2) {
+			rl.SetWindowPosition(c.int(value.x), c.int(value.y))
+		}, set_size = proc(data: rawptr, value: vec2) {
+			rl.SetWindowSize(c.int(value.x), c.int(value.y))
 		}}
 }
 
 raylib_input :: proc() -> input {
-	return {data = {}, is_key_pressed = proc(data: rawptr, key: keyboard_key) -> bool {
-			return rl.IsKeyPressed(input_keyboard_key_to_rl_keyboard_key[key])
-		}, is_key_down = proc(data: rawptr, key: keyboard_key) -> bool {
+	return {data = {}, is_key_down = proc(data: rawptr, key: keyboard_key) -> bool {
 			return rl.IsKeyDown(input_keyboard_key_to_rl_keyboard_key[key])
+		}, is_key_pressed = proc(data: rawptr, key: keyboard_key) -> bool {
+			return rl.IsKeyPressed(input_keyboard_key_to_rl_keyboard_key[key])
+		}, is_key_released = proc(data: rawptr, key: keyboard_key) -> bool {
+			return rl.IsKeyReleased(input_keyboard_key_to_rl_keyboard_key[key])
+		}, is_mouse_down = proc(data: rawptr, button: mouse_button) -> bool {
+			return rl.IsMouseButtonDown(input_mouse_button_to_rl_mouse_button[button])
+		}, is_mouse_pressed = proc(data: rawptr, button: mouse_button) -> bool {
+			return rl.IsMouseButtonPressed(input_mouse_button_to_rl_mouse_button[button])
+		}, is_mouse_released = proc(data: rawptr, button: mouse_button) -> bool {
+			return !rl.IsMouseButtonPressed(input_mouse_button_to_rl_mouse_button[button])
+		}, get_mouse_position = proc(data: rawptr) -> vec2 {
+			return rl.GetMousePosition()
+		}, get_mouse_delta = proc(data: rawptr) -> vec2 {
+			return rl.GetMouseDelta()
+		}, set_mouse_position = proc(data: rawptr, value: vec2) {
+			rl.SetMousePosition(c.int(value.x), c.int(value.y))
+		}, get_mouse_wheel_delta = proc(data: rawptr) -> vec2 {
+			return vec2(rl.GetMouseWheelMoveV())
 		}}
 }
 
@@ -241,12 +279,7 @@ raylib_renderer :: proc() -> renderer {
 				f32(sprite.source.width),
 				f32(sprite.source.height),
 			}
-			dst_rect := rl.Rectangle {
-				0,
-				0,
-				f32(sprite.texture.width),
-				f32(sprite.texture.height),
-			}
+			dst_rect := rl.Rectangle{0, 0, f32(sprite.texture.width), f32(sprite.texture.height)}
 			rl.DrawTexturePro(
 				rl_texture,
 				src_rect,
@@ -262,7 +295,6 @@ raylib_renderer :: proc() -> renderer {
 raylib_plugin :: proc(app: ^app) {
 	rl.SetTraceLogLevel(.WARNING)
 	config_flags: rl.ConfigFlags = {.WINDOW_RESIZABLE}
-	// 	config_flags |= rl.ConfigFlags{.FULLSCREEN_MODE}
 	rl.SetConfigFlags(config_flags)
 	rl.InitWindow(1920, 1080, "")
 	rl.SetExitKey(.KEY_NULL)

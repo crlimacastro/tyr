@@ -438,6 +438,10 @@ imgui_ui :: proc() -> ui {
 				imgui_ui_slider_flags_to_im_slider_flags(flags),
 			)
 		},
+		checkbox = proc(data: rawptr, label: string, v: ^bool) -> bool {
+			label_cstr := strings.clone_to_cstring(label, context.temp_allocator)
+			return im.Checkbox(label_cstr, v)
+		},
 		dockspace_over_viewport = proc(data: rawptr, id: string, flags: ui_dock_node_flags = {}) {
 			id_cstr := strings.clone_to_cstring(id, context.temp_allocator)
 			im.DockSpaceOverViewport(

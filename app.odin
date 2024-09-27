@@ -26,25 +26,23 @@ app :: struct {
 }
 
 app_init :: proc() -> app {
-	return app{fixed_time_step = 1.0 / 60.0, ecs_ctx = ecs_init()}
+	return app{fixed_time_step = 1.0 / 60.0, ecs_ctx = ecs_context_init()}
 }
 
 app_deinit :: proc(a: ^app) {
 	delete(a.plugins)
 	delete(a.resources)
 	delete(a.scheduler)
-	ecs_deinit(&a.ecs_ctx)
+	ecs_context_deinit(&a.ecs_ctx)
 }
-
 
 app_run :: proc(a: ^app) {
 	a.is_running = true
-	resources_set(&a.resources, a)
+	prev_user_ptr := context.user_ptr
+	context.user_ptr = a
 	app_add_systems(a, app_quit, proc(#by_ptr e: app_quit) {
-		maybe_app, ok := resources_get(e.resources, ^app)
-		if ok {
-			maybe_app^.is_running = false
-		}
+		app := cast(^app)context.user_ptr
+		app.is_running = false
 	})
 	scheduler_dispatch(
 		&a.scheduler,
