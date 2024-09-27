@@ -129,7 +129,7 @@ editor_resources_window_system :: proc(#by_ptr step: editor_update_step) {
 		for res_type, &res_val in step.resources {
 			label := fmt.tprintf("%s", res_type)
 			if ui_tree_node(step.ui, label) {
-				editor_update_step_draw_obj(step, res_type, res_val)
+				editor_update_step_render_inspector(step, res_type, res_val)
 				ui_tree_pop(step.ui)
 			}
 
@@ -142,7 +142,7 @@ editor_has_inspector :: proc(editor: ^editor_state, type: typeid) -> bool {
 	return type in editor.type_inspectors
 }
 
-editor_update_step_draw_obj :: proc(#by_ptr step: editor_update_step, type: typeid, obj: rawptr) {
+editor_update_step_render_inspector :: proc(#by_ptr step: editor_update_step, type: typeid, obj: rawptr) {
 	drawer, ok := step.editor_state.type_inspectors[type]
 	if ok {
 		drawer(step.ui, obj)
@@ -162,9 +162,6 @@ editor_update_step_draw_obj :: proc(#by_ptr step: editor_update_step, type: type
 			ui_input_text(step.ui, "##", &enum_name, {.read_only})
 		case runtime.Type_Info_Dynamic_Array:
 			type_info_dyn_arr := type_info_named.base.variant.(runtime.Type_Info_Dynamic_Array)
-			for i in 0 ..< type_info_dyn_arr.length {
-				obj_any := any{obj, type}
-			}
 		// TODO list (with add button/remove buttons)
 		case runtime.Type_Info_Struct:
 			type_info_struct := type_info_named.base.variant.(runtime.Type_Info_Struct)
@@ -186,13 +183,13 @@ editor_update_step_draw_obj :: proc(#by_ptr step: editor_update_step, type: type
 				if field_value_any == nil {continue}
 
 				if ui_tree_node(step.ui, field_name) {
-					editor_update_step_draw_obj(step, field_value_any.id, field_value_any.data)
+					editor_update_step_render_inspector(step, field_value_any.id, field_value_any.data)
 					ui_tree_pop(step.ui)
 				}
 			}
 		}
 		if type_info_named.base != nil && editor_has_inspector(step.editor_state, type_info_named.base.id) {
-			editor_update_step_draw_obj(step, type_info_named.base.id, obj)
+			editor_update_step_render_inspector(step, type_info_named.base.id, obj)
 		}
 	}
 }
@@ -208,7 +205,7 @@ editor_inspector_window_system :: proc(#by_ptr step: editor_update_step) {
 			) {
 				label := fmt.tprintf("%s", info.id)
 				if ui_tree_node(step.ui, label) {
-					editor_update_step_draw_obj(step, info.id, info.data)
+					editor_update_step_render_inspector(step, info.id, info.data)
 					ui_tree_pop(step.ui)
 				}
 			}
