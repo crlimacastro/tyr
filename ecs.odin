@@ -43,9 +43,12 @@ ecs_context_deinit :: proc(ctx: ^ecs_context) {
 
 ecs_get_entities :: proc(ctx: ^ecs_context, allocator := context.allocator) -> []entity {
 	entities := make([]entity, len(ctx.entities), allocator)
+	i := 0
 	for key, _ in ctx.entities {
-		entities[key] = key
+		entities[i] = key
+		i+=1
 	}
+	
 	return entities
 }
 

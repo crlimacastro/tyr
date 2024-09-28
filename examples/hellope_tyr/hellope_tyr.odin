@@ -7,7 +7,7 @@ main :: proc() {
 	a := app_init()
 	defer app_deinit(&a)
 	app_add_plugins(&a, default_plugins_plugin, editor_plugin)
-	app_add_systems(&a, update_step, debug_quit_on_escape_system)
+	// app_add_systems(&a, update_step, debug_quit_on_escape_system)
 	app_add_systems(&a, rendering_step, debug_render_fps_system)
 	app_add_systems(&a, editor_update_step, debug_show_demo_window_system)
 	app_add_systems(&a, start_step, proc(#by_ptr step: start_step) {

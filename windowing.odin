@@ -10,6 +10,8 @@ window :: struct {
 	should_close:   proc(data: rawptr) -> bool,
 	is_fullscreen:  proc(data: rawptr) -> bool,
 	set_fullscreen: proc(data: rawptr, value: bool),
+	is_maximized:   proc(data: rawptr) -> bool,
+	maximize:       proc(data: rawptr),
 	get_position:   proc(data: rawptr) -> vec2,
 	get_size:       proc(data: rawptr) -> vec2,
 	set_position:   proc(data: rawptr, value: vec2),
@@ -20,9 +22,10 @@ windowing_prefs :: struct {
 	position:      vec2,
 	size:          vec2,
 	is_fullscreen: bool,
+	is_maximized:  bool,
 }
 
-WINDOWING_PREFS_PATH :: PREFS_PATH + "/tyr_windowing_prefs.json"
+WINDOWING_PREFS_PATH :: DOT_TYR_PATH + "/tyr_windowing_prefs.json"
 
 window_set_title :: proc(window: ^window, value: string) {
 	window.set_title(window.data, value)
@@ -46,6 +49,14 @@ window_toggle_fullscreen :: proc(window: ^window) {
 	} else {
 		window_set_fullscreen(window, true)
 	}
+}
+
+window_is_maximized :: proc(window: ^window) -> bool {
+	return window.is_maximized(window.data)
+}
+
+window_maximize :: proc(window: ^window) {
+	window.maximize(window.data)
 }
 
 window_get_position :: proc(window: ^window) -> vec2 {
@@ -98,8 +109,12 @@ windowing_load_prefs :: proc(resources: ^resources) {
 	window, ok := resources_get(resources, window)
 	if !ok {return}
 	window_set_position(window, prefs.position)
-	window_set_size(window, prefs.size)
 	window_set_fullscreen(window, prefs.is_fullscreen)
+	if prefs.is_maximized {
+		window_maximize(window)
+	} else {
+		window_set_size(window, prefs.size)
+	}
 }
 
 windowing_save_prefs :: proc(resources: ^resources) {
@@ -109,12 +124,12 @@ windowing_save_prefs :: proc(resources: ^resources) {
 		position      = window_get_position(window),
 		size          = window_get_size(window),
 		is_fullscreen = window_is_fullscreen(window),
+		is_maximized  = window_is_maximized(window),
 	}
 	prefs_json_data, json_err := json.marshal(prefs)
 	if json_err != nil {
 		panic(fmt.tprintf("%s", json_err))
 	}
-	create_prefs_dir()
 	file, file_err := os.open(WINDOWING_PREFS_PATH, os.O_WRONLY | os.O_CREATE | os.O_TRUNC)
 	if file_err != nil {
 		panic(fmt.tprintf("%s", file_err))

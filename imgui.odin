@@ -177,6 +177,18 @@ imgui_ui_input_text_flags_to_im_input_text_flags :: proc(
 	return im_flags
 }
 
+imgui_main_menu_bar_ui :: proc() -> main_menu_bar_ui {
+	return {data = {}, begin_menu = proc(data: rawptr, label: string) -> bool {
+			label_cstr := strings.clone_to_cstring(label, context.temp_allocator)
+			return im.BeginMenu(label_cstr)
+		}, end_menu = proc(data: rawptr) {
+			im.EndMenu()
+		}, menu_item = proc(data: rawptr, label: string) -> bool {
+			label_cstr := strings.clone_to_cstring(label, context.temp_allocator)
+			return im.MenuItem(label_cstr)
+		}}
+}
+
 imgui_ui :: proc() -> ui {
 	return {
 		data = {},
@@ -472,7 +484,11 @@ imgui_ui :: proc() -> ui {
 	}
 }
 
-imgui_step :: struct {
+imgui_main_menu_bar_update_step :: struct {
+	using step: app_step,
+}
+
+imgui_update_step :: struct {
 	using step: app_step,
 }
 
@@ -490,6 +506,8 @@ imgui_plugin :: proc(app: ^app) {
 	imrl.init()
 	imrl.build_font_atlas()
 
+	app_set_resource(app, imgui_ui())
+	app_set_resource(app, imgui_main_menu_bar_ui())
 	app_add_systems(app, rendering_step, imgui_update_system)
 	app_add_systems(app, deinit_step, imgui_deinit_system)
 }
@@ -498,7 +516,17 @@ imgui_update_system :: proc(#by_ptr step: rendering_step) {
 	imrl.process_events()
 	imrl.new_frame()
 	im.NewFrame()
-	scheduler_dispatch(step.scheduler, imgui_step, imgui_step{step = step})
+
+	if im.BeginMainMenuBar() {
+		scheduler_dispatch(
+			step.scheduler,
+			imgui_main_menu_bar_update_step,
+			imgui_main_menu_bar_update_step{step = step},
+		)
+		im.EndMainMenuBar()
+	}
+
+	scheduler_dispatch(step.scheduler, imgui_update_step, imgui_update_step{step = step})
 	im.Render()
 	imrl.render_draw_data(im.GetDrawData())
 	im.UpdatePlatformWindows()

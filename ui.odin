@@ -122,6 +122,25 @@ ui_input_text_flag :: enum {
 	callback_edit           = 22, // callback on any edit (note that inputtext() already returns true on edit, the callback is useful mainly to manipulate the underlying buffer while focus is active)
 }
 
+main_menu_bar_ui :: struct {
+	data:       rawptr,
+	begin_menu: proc(data: rawptr, label: string) -> bool,
+	end_menu:   proc(data: rawptr),
+	menu_item:  proc(data: rawptr, label: string) -> bool,
+}
+
+main_menu_bar_ui_begin_menu :: proc(ui: ^main_menu_bar_ui, label: string) -> bool {
+	return ui.begin_menu(ui.data, label)
+}
+
+main_menu_bar_ui_end_menu :: proc(ui: ^main_menu_bar_ui) {
+	ui.end_menu(ui.data)
+}
+
+main_menu_bar_ui_menu_item :: proc(ui: ^main_menu_bar_ui, label: string) -> bool {
+	return ui.menu_item(ui.data, label)
+}
+
 ui :: struct {
 	data:                    rawptr,
 	begin_window:            proc(
@@ -424,23 +443,40 @@ ui_checkbox :: proc(ui: ^ui, label: string, v: ^bool) -> bool {
 	return ui.checkbox(ui.data, label, v)
 }
 
-ui_step :: struct {
+ui_main_menu_bar_update_step :: struct {
+	using step: app_step,
+	ui:         ^main_menu_bar_ui,
+}
+
+ui_update_step :: struct {
 	using step: app_step,
 	ui:         ^ui,
 }
 
 ui_plugin :: proc(app: ^app) {
 	app_add_plugins(app, imgui_plugin)
-	app_set_resource(app, imgui_ui())
-	app_add_systems(app, imgui_step, ui_update_system)
+	app_add_systems(app, imgui_main_menu_bar_update_step, ui_main_menu_bar_update_system)
+	app_add_systems(app, imgui_update_step, ui_update_system)
 }
 
-ui_update_system :: proc(#by_ptr step: imgui_step) {
+ui_main_menu_bar_update_system :: proc(#by_ptr step: imgui_main_menu_bar_update_step) {
+	ui, ok := resources_get(step.resources, main_menu_bar_ui)
+	if !ok {
+		return
+	}
+	scheduler_dispatch(
+		step.scheduler,
+		ui_main_menu_bar_update_step,
+		ui_main_menu_bar_update_step{step = step, ui = ui},
+	)
+}
+
+ui_update_system :: proc(#by_ptr step: imgui_update_step) {
 	ui, ok := resources_get(step.resources, ui)
 	if !ok {
 		return
 	}
-	scheduler_dispatch(step.scheduler, ui_step, ui_step{step = step, ui = ui})
+	scheduler_dispatch(step.scheduler, ui_update_step, ui_update_step{step = step, ui = ui})
 }
 
 ui_dockspace_over_viewport :: proc(ui: ^ui, id: string, flags: ui_dock_node_flags = {}) {

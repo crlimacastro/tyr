@@ -220,7 +220,14 @@ raylib_window :: proc() -> window {
 			if rl.IsWindowFullscreen() != value {
 				rl.ToggleFullscreen()
 			}
-		}, get_position = proc(data: rawptr) -> vec2 {
+		},
+		is_maximized = proc(data: rawptr) -> bool {
+			return rl.IsWindowMaximized()
+		},
+		maximize = proc(data: rawptr) {
+			rl.MaximizeWindow()
+		},
+		get_position = proc(data: rawptr) -> vec2 {
 			return rl.GetWindowPosition()
 		}, get_size = proc(data: rawptr) -> vec2 {
 			return vec2{fp(rl.GetScreenWidth()), fp(rl.GetScreenHeight())}
