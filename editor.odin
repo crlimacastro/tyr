@@ -270,8 +270,7 @@ editor_update_step_render_inspector :: proc(
 	case runtime.Type_Info_Array:
 		type_info_arr := type_info.variant.(runtime.Type_Info_Array)
 		if (editor_has_inspector(step.editor_state, type_info_arr.elem.id)) {
-			arr_ptr := ([^]byte)(obj)
-
+			arr_ptr := cast([^]byte)(obj)
 			for i in 0 ..< type_info_arr.count {
 				elem_ptr := rawptr(uintptr(arr_ptr) + uintptr(i * type_info_arr.elem_size))
 				editor_update_step_render_inspector(step, type_info_arr.elem.id, elem_ptr)
