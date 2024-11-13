@@ -200,7 +200,11 @@ editor_has_inspector :: proc(editor: ^editor_state, type: typeid) -> bool {
 			field_type_info := field_type_infos[i]
 			if editor_has_inspector(editor, field_type_info.id) {return true}
 		}
+	case runtime.Type_Info_Array:
+		type_info_arr := type_info.variant.(runtime.Type_Info_Array)
+		if editor_has_inspector(editor, type_info_arr.elem.id) {return true}
 	}
+
 
 	return false
 }
@@ -262,6 +266,16 @@ editor_update_step_render_inspector :: proc(
 		if type_info_named.base != nil &&
 		   editor_has_inspector(step.editor_state, type_info_named.base.id) {
 			editor_update_step_render_inspector(step, type_info_named.base.id, obj)
+		}
+	case runtime.Type_Info_Array:
+		type_info_arr := type_info.variant.(runtime.Type_Info_Array)
+		if (editor_has_inspector(step.editor_state, type_info_arr.elem.id)) {
+			arr_ptr := ([^]byte)(obj)
+
+			for i in 0 ..< type_info_arr.count {
+				elem_ptr := rawptr(uintptr(arr_ptr) + uintptr(i * type_info_arr.elem_size))
+				editor_update_step_render_inspector(step, type_info_arr.elem.id, elem_ptr)
+			}
 		}
 	}
 }

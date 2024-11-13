@@ -274,6 +274,7 @@ raylib_renderer :: proc() -> renderer {
 			rotation: fp = 0,
 			scale: vec2 = {1, 1},
 			tint: color,
+			flip: [2]bool = { false, false },
 		) {
 			rl_texture := rendering_texture_to_rl_texture(sprite.texture)
 			rlgl.PushMatrix()
@@ -283,8 +284,8 @@ raylib_renderer :: proc() -> renderer {
 			src_rect := rl.Rectangle {
 				f32(sprite.source.x),
 				f32(sprite.source.y),
-				f32(sprite.source.width),
-				f32(sprite.source.height),
+				f32(sprite.source.width) * (flip.x ? -1 : 1),
+				f32(sprite.source.height) * (flip.y ? -1 : 1),
 			}
 			dst_rect := rl.Rectangle{0, 0, f32(sprite.texture.width), f32(sprite.texture.height)}
 			rl.DrawTexturePro(

@@ -50,8 +50,9 @@ texture :: struct {
 
 sprite :: struct {
 	texture: texture,
-	tint:    color,
 	source:  rectangle,
+	tint:    color,
+	flip:  [2]bool,
 }
 
 sprite_new :: proc(texture: texture) -> sprite {
@@ -67,7 +68,7 @@ visibility :: distinct bool
 renderer :: struct {
 	data:        rawptr,
 	load_texture: proc(data: rawptr, filename: string) -> texture,
-	render_sprite: proc(data: rawptr, sprite: ^sprite, position: vec2 = {}, rotation: fp = 0, scale: vec2 = {1, 1}, tint: color = white),
+	render_sprite: proc(data: rawptr, sprite: ^sprite, position: vec2 = {}, rotation: fp = 0, scale: vec2 = {1, 1}, tint: color = white, flip: [2]bool = {false, false}),
 }
 
 renderer_load_texture :: proc(renderer: ^renderer, filename: string) -> texture {
@@ -81,8 +82,9 @@ renderer_render_sprite :: proc(
 	rotation: fp = 0,
 	scale: vec2 = {1, 1},
 	tint: color = white,
+	flip: [2]bool = { false, false },
 ) {
-	renderer.render_sprite(renderer.data, sprite, position, rotation, scale, tint)
+	renderer.render_sprite(renderer.data, sprite, position, rotation, scale, tint, flip)
 }
 
 rendering_step :: struct {
@@ -141,6 +143,6 @@ rendering_render_sprites_system :: proc(#by_ptr step: rendering_step) {
 			rotation = transform.rotation
 			scale = transform.scale
 		}
-		step.renderer.render_sprite(step.renderer.data, sprite, position, rotation, scale, sprite.tint)
+		step.renderer.render_sprite(step.renderer.data, sprite, position, rotation, scale, sprite.tint, sprite.flip)
 	}
 }
