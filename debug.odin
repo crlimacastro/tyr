@@ -25,7 +25,7 @@ debug_render_fps_system :: proc(#by_ptr step: rendering_step) {
 	rl.DrawFPS(10, 10)
 }
 
-debug_show_demo_window_system :: proc(#by_ptr step: editor_update_step) {
+debug_show_imgui_demo_window_system :: proc(#by_ptr step: editor_update_step) {
 	when !ODIN_DEBUG {
 		return
 	}

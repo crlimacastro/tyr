@@ -204,7 +204,75 @@ rl_texture_to_rendering_texture :: proc(rl_texture: rl.Texture2D) -> texture {
 	}
 }
 
-raylib_update_step :: struct {
+rendering_mesh_to_rl_mesh :: proc(#by_ptr mesh: mesh) -> rl.Mesh {
+	return rl.Mesh {
+		vertexCount = c.int(mesh.vertex_count),
+		triangleCount = c.int(mesh.triangle_count),
+		vertices = mesh.vertices,
+		texcoords = mesh.texcoords,
+		texcoords2 = mesh.texcoords2,
+		normals = mesh.normals,
+		tangents = mesh.tangents,
+		colors = mesh.colors,
+		indices = mesh.indices,
+		animVertices = mesh.anim_vertices,
+		animNormals = mesh.anim_normals,
+		boneIds = mesh.bone_ids,
+		boneWeights = mesh.bone_weights,
+		vaoId = mesh.vao_id,
+		vboId = mesh.vbo_id,
+	}
+}
+
+rl_mesh_to_rendering_mesh :: proc(rl_mesh: rl.Mesh) -> mesh {
+	return {
+		vertex_count = uint(rl_mesh.vertexCount),
+		triangle_count = uint(rl_mesh.triangleCount),
+		vertices = rl_mesh.vertices,
+		texcoords = rl_mesh.texcoords,
+		texcoords2 = rl_mesh.texcoords2,
+		normals = rl_mesh.normals,
+		tangents = rl_mesh.tangents,
+		colors = rl_mesh.colors,
+		indices = rl_mesh.indices,
+		anim_vertices = rl_mesh.animVertices,
+		anim_normals = rl_mesh.animNormals,
+		bone_ids = rl_mesh.boneIds,
+		bone_weights = rl_mesh.boneWeights,
+		vao_id = rl_mesh.vaoId,
+		vbo_id = rl_mesh.vboId,
+	}
+}
+
+rendering_camera_projection_to_rl_projection :: proc(
+	#by_ptr projection: camera_projection,
+) -> rl.CameraProjection {
+	switch projection {
+	case .perspective:
+		return rl.CameraProjection.PERSPECTIVE
+	case .orthographic:
+		return rl.CameraProjection.ORTHOGRAPHIC
+	}
+	return rl.CameraProjection.PERSPECTIVE
+}
+
+rl_projection_to_rendering_camera_projection :: proc(
+	rl_projection: rl.CameraProjection,
+) -> camera_projection {
+	switch rl_projection {
+	case rl.CameraProjection.PERSPECTIVE:
+		return .perspective
+	case rl.CameraProjection.ORTHOGRAPHIC:
+		return .orthographic
+	}
+	return .perspective
+}
+
+raylib_drawing_step :: struct {
+	using step: app_step,
+}
+
+raylib_drawing_3d_step :: struct {
 	using step: app_step,
 }
 
@@ -220,14 +288,11 @@ raylib_window :: proc() -> window {
 			if rl.IsWindowFullscreen() != value {
 				rl.ToggleFullscreen()
 			}
-		},
-		is_maximized = proc(data: rawptr) -> bool {
+		}, is_maximized = proc(data: rawptr) -> bool {
 			return rl.IsWindowMaximized()
-		},
-		maximize = proc(data: rawptr) {
+		}, maximize = proc(data: rawptr) {
 			rl.MaximizeWindow()
-		},
-		get_position = proc(data: rawptr) -> vec2 {
+		}, get_position = proc(data: rawptr) -> vec2 {
 			return rl.GetWindowPosition()
 		}, get_size = proc(data: rawptr) -> vec2 {
 			return vec2{fp(rl.GetScreenWidth()), fp(rl.GetScreenHeight())}
@@ -274,7 +339,7 @@ raylib_renderer :: proc() -> renderer {
 			rotation: fp = 0,
 			scale: vec2 = {1, 1},
 			tint: color,
-			flip: [2]bool = { false, false },
+			flip: [2]bool = {false, false},
 		) {
 			rl_texture := rendering_texture_to_rl_texture(sprite.texture)
 			rlgl.PushMatrix()
@@ -297,6 +362,20 @@ raylib_renderer :: proc() -> renderer {
 				transmute(rl.Color)(tint),
 			)
 			rlgl.PopMatrix()
+		}, render_mesh = proc(
+			data: rawptr,
+			mesh: ^mesh,
+			position: vec3 = {},
+			rotation: vec3 = {},
+			scale: vec3 = {1, 1, 1},
+		) {
+			rl_mesh := rendering_mesh_to_rl_mesh(mesh^)
+			material := rl.LoadMaterialDefault()
+			m :=
+				rl.MatrixTranslate(position.x, position.y, position.z) *
+				rl.MatrixRotateXYZ(rotation) *
+				rl.MatrixScale(scale.x, scale.y, scale.z)
+			rl.DrawMesh(rl_mesh, material, m)
 		}}
 }
 
@@ -310,11 +389,12 @@ raylib_plugin :: proc(app: ^app) {
 	app_set_resource(app, raylib_input())
 	app_set_resource(app, raylib_window())
 	app_set_resource(app, raylib_renderer())
-	app_add_systems(app, update_step, raylib_update_system)
+	app_add_systems(app, update_step, raylib_drawing_step_system)
+	app_add_systems(app, raylib_drawing_step, raylib_drawing_3d_step_system)
 	app_add_systems(app, deinit_step, raylib_deinit_system)
 }
 
-raylib_update_system :: proc(#by_ptr step: update_step) {
+raylib_drawing_step_system :: proc(#by_ptr step: update_step) {
 	rl.BeginDrawing()
 	defer rl.EndDrawing()
 
@@ -325,7 +405,42 @@ raylib_update_system :: proc(#by_ptr step: update_step) {
 	}
 	rl.ClearBackground(rl.Color(clear_col))
 
-	scheduler_dispatch(step.scheduler, raylib_update_step, raylib_update_step{step = step})
+	scheduler_dispatch(step.scheduler, raylib_drawing_step, raylib_drawing_step{step = step})
+}
+
+raylib_drawing_3d_step_system :: proc(#by_ptr step: raylib_drawing_step) {
+	main_camera, ok := resources_get(step.resources, main_camera3d)
+	if !ok {
+		return
+	}
+	camera, okk := ecs_get_component(step.ecs_ctx, main_camera.entity, camera3d)
+	if !okk {
+		return
+	}
+	position := vec3{0, 0, 0}
+	target := vec3{0, 0, 1}
+	up := vec3{0, 1, 0}
+	if cam_transform, okkk := ecs_get_component(step.ecs_ctx, main_camera.entity, transform3);
+	   okkk {
+		position = cam_transform.translation
+		target = cam_transform.translation + {0, 0, 1}
+		up = {0, 1, 0}
+	}
+
+	projection := rendering_camera_projection_to_rl_projection(camera.projection)
+
+	rl_camera := rl.Camera3D {
+		position   = position,
+		target     = target,
+		up         = up,
+		fovy       = camera.fovy,
+		projection = projection,
+	}
+
+	rl.BeginMode3D(rl_camera)
+	defer rl.EndMode3D()
+
+	scheduler_dispatch(step.scheduler, raylib_drawing_3d_step, raylib_drawing_3d_step{step = step})
 }
 
 raylib_deinit_system :: proc(#by_ptr step: deinit_step) {
