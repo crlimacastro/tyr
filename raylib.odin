@@ -5,268 +5,11 @@ import "core:strings"
 import rl "vendor:raylib"
 import "vendor:raylib/rlgl"
 
-input_keyboard_key_to_rl_keyboard_key := map[keyboard_key]rl.KeyboardKey {
-	.key_null      = .KEY_NULL,
-	.apostrophe    = .APOSTROPHE,
-	.comma         = .COMMA,
-	.minus         = .MINUS,
-	.period        = .PERIOD,
-	.slash         = .SLASH,
-	.zero          = .ZERO,
-	.one           = .ONE,
-	.two           = .TWO,
-	.three         = .THREE,
-	.four          = .FOUR,
-	.five          = .FIVE,
-	.six           = .SIX,
-	.seven         = .SEVEN,
-	.eight         = .EIGHT,
-	.nine          = .NINE,
-	.semicolon     = .SEMICOLON,
-	.equal         = .EQUAL,
-	.a             = .A,
-	.b             = .B,
-	.c             = .C,
-	.d             = .D,
-	.e             = .E,
-	.f             = .F,
-	.g             = .G,
-	.h             = .H,
-	.i             = .I,
-	.j             = .J,
-	.k             = .K,
-	.l             = .L,
-	.m             = .M,
-	.n             = .N,
-	.o             = .O,
-	.p             = .P,
-	.q             = .Q,
-	.r             = .R,
-	.s             = .S,
-	.t             = .T,
-	.u             = .U,
-	.v             = .V,
-	.w             = .W,
-	.x             = .X,
-	.y             = .Y,
-	.z             = .Z,
-	.left_bracket  = .LEFT_BRACKET,
-	.backslash     = .BACKSLASH,
-	.right_bracket = .RIGHT_BRACKET,
-	.grave         = .GRAVE,
-	.space         = .SPACE,
-	.escape        = .ESCAPE,
-	.enter         = .ENTER,
-	.tab           = .TAB,
-	.backspace     = .BACKSPACE,
-	.insert        = .INSERT,
-	.delete        = .DELETE,
-	.right         = .RIGHT,
-	.left          = .LEFT,
-	.down          = .DOWN,
-	.up            = .UP,
-	.page_up       = .PAGE_UP,
-	.page_down     = .PAGE_DOWN,
-	.home          = .HOME,
-	.end           = .END,
-	.caps_lock     = .CAPS_LOCK,
-	.scroll_lock   = .SCROLL_LOCK,
-	.num_lock      = .NUM_LOCK,
-	.print_screen  = .PRINT_SCREEN,
-	.pause         = .PAUSE,
-	.f1            = .F1,
-	.f2            = .F2,
-	.f3            = .F3,
-	.f4            = .F4,
-	.f5            = .F5,
-	.f6            = .F6,
-	.f7            = .F7,
-	.f8            = .F8,
-	.f9            = .F9,
-	.f10           = .F10,
-	.f11           = .F11,
-	.f12           = .F12,
-	.left_shift    = .LEFT_SHIFT,
-	.left_control  = .LEFT_CONTROL,
-	.left_alt      = .LEFT_ALT,
-	.left_super    = .LEFT_SUPER,
-	.right_shift   = .RIGHT_SHIFT,
-	.right_control = .RIGHT_CONTROL,
-	.right_alt     = .RIGHT_ALT,
-	.right_super   = .RIGHT_SUPER,
-	.kb_menu       = .KB_MENU,
-	.kp_0          = .KP_0,
-	.kp_1          = .KP_1,
-	.kp_2          = .KP_2,
-	.kp_3          = .KP_3,
-	.kp_4          = .KP_4,
-	.kp_5          = .KP_5,
-	.kp_6          = .KP_6,
-	.kp_7          = .KP_7,
-	.kp_8          = .KP_8,
-	.kp_9          = .KP_9,
-	.kp_decimal    = .KP_DECIMAL,
-	.kp_divide     = .KP_DIVIDE,
-	.kp_multiply   = .KP_MULTIPLY,
-	.kp_subtract   = .KP_SUBTRACT,
-	.kp_add        = .KP_ADD,
-	.kp_enter      = .KP_ENTER,
-	.kp_equal      = .KP_EQUAL,
-	.back          = .BACK,
-	.menu          = .MENU,
-	.volume_up     = .VOLUME_UP,
-	.volume_down   = .VOLUME_DOWN,
-}
-
-input_mouse_button_to_rl_mouse_button := map[mouse_button]rl.MouseButton {
-	.left    = .LEFT,
-	.right   = .RIGHT,
-	.middle  = .MIDDLE,
-	.side    = .SIDE,
-	.extra   = .EXTRA,
-	.forward = .FORWARD,
-	.back    = .BACK,
-}
-
-rendering_pixel_format_to_rl_pixel_format := map[pixel_format]rl.PixelFormat {
-	.unknown                   = .UNKNOWN,
-	.uncompressed_grayscale    = .UNCOMPRESSED_GRAYSCALE,
-	.uncompressed_gray_alpha   = .UNCOMPRESSED_GRAY_ALPHA,
-	.uncompressed_r5g6b5       = .UNCOMPRESSED_R5G6B5,
-	.uncompressed_r8g8b8       = .UNCOMPRESSED_R8G8B8,
-	.uncompressed_r5g5b5a1     = .UNCOMPRESSED_R5G5B5A1,
-	.uncompressed_r4g4b4a4     = .UNCOMPRESSED_R4G4B4A4,
-	.uncompressed_r8g8b8a8     = .UNCOMPRESSED_R8G8B8A8,
-	.uncompressed_r32          = .UNCOMPRESSED_R32,
-	.uncompressed_r32g32b32    = .UNCOMPRESSED_R32G32B32,
-	.uncompressed_r32g32b32a32 = .UNCOMPRESSED_R32G32B32A32,
-	.uncompressed_r16          = .UNCOMPRESSED_R16,
-	.uncompressed_r16g16b16    = .UNCOMPRESSED_R16G16B16,
-	.uncompressed_r16g16b16a16 = .UNCOMPRESSED_R16G16B16A16,
-	.compressed_dxt1_rgb       = .COMPRESSED_DXT1_RGB,
-	.compressed_dxt1_rgba      = .COMPRESSED_DXT1_RGBA,
-	.compressed_dxt3_rgba      = .COMPRESSED_DXT3_RGBA,
-	.compressed_dxt5_rgba      = .COMPRESSED_DXT5_RGBA,
-	.compressed_etc1_rgb       = .COMPRESSED_ETC1_RGB,
-	.compressed_etc2_rgb       = .COMPRESSED_ETC2_RGB,
-	.compressed_etc2_eac_rgba  = .COMPRESSED_ETC2_EAC_RGBA,
-	.compressed_pvrt_rgb       = .COMPRESSED_PVRT_RGB,
-	.compressed_pvrt_rgba      = .COMPRESSED_PVRT_RGBA,
-	.compressed_astc_4x4_rgba  = .COMPRESSED_ASTC_4x4_RGBA,
-	.compressed_astc_8x8_rgba  = .COMPRESSED_ASTC_8x8_RGBA,
-}
-
-rl_pixel_format_to_rendering_pixel_format := map[rl.PixelFormat]pixel_format {
-	.UNKNOWN                   = .unknown,
-	.UNCOMPRESSED_GRAYSCALE    = .uncompressed_grayscale,
-	.UNCOMPRESSED_GRAY_ALPHA   = .uncompressed_gray_alpha,
-	.UNCOMPRESSED_R5G6B5       = .uncompressed_r5g6b5,
-	.UNCOMPRESSED_R8G8B8       = .uncompressed_r8g8b8,
-	.UNCOMPRESSED_R5G5B5A1     = .uncompressed_r5g5b5a1,
-	.UNCOMPRESSED_R4G4B4A4     = .uncompressed_r4g4b4a4,
-	.UNCOMPRESSED_R8G8B8A8     = .uncompressed_r8g8b8a8,
-	.UNCOMPRESSED_R32          = .uncompressed_r32,
-	.UNCOMPRESSED_R32G32B32    = .uncompressed_r32g32b32,
-	.UNCOMPRESSED_R32G32B32A32 = .uncompressed_r32g32b32a32,
-	.UNCOMPRESSED_R16          = .uncompressed_r16,
-	.UNCOMPRESSED_R16G16B16    = .uncompressed_r16g16b16,
-	.UNCOMPRESSED_R16G16B16A16 = .uncompressed_r16g16b16a16,
-	.COMPRESSED_DXT1_RGB       = .compressed_dxt1_rgb,
-	.COMPRESSED_DXT1_RGBA      = .compressed_dxt1_rgba,
-	.COMPRESSED_DXT3_RGBA      = .compressed_dxt3_rgba,
-	.COMPRESSED_DXT5_RGBA      = .compressed_dxt5_rgba,
-	.COMPRESSED_ETC1_RGB       = .compressed_etc1_rgb,
-	.COMPRESSED_ETC2_RGB       = .compressed_etc2_rgb,
-	.COMPRESSED_ETC2_EAC_RGBA  = .compressed_etc2_eac_rgba,
-	.COMPRESSED_PVRT_RGB       = .compressed_pvrt_rgb,
-	.COMPRESSED_PVRT_RGBA      = .compressed_pvrt_rgba,
-	.COMPRESSED_ASTC_4x4_RGBA  = .compressed_astc_4x4_rgba,
-	.COMPRESSED_ASTC_8x8_RGBA  = .compressed_astc_8x8_rgba,
-}
-
-rendering_texture_to_rl_texture :: proc(#by_ptr texture: texture) -> rl.Texture2D {
-	return rl.Texture2D {
-		id = c.uint(texture.id),
-		width = c.int(texture.width),
-		height = c.int(texture.height),
-		mipmaps = c.int(texture.mipmaps),
-		format = rendering_pixel_format_to_rl_pixel_format[texture.format],
-	}
-}
-
-rl_texture_to_rendering_texture :: proc(rl_texture: rl.Texture2D) -> texture {
-	return {
-		id = uint(rl_texture.id),
-		width = int(rl_texture.width),
-		height = int(rl_texture.height),
-		mipmaps = int(rl_texture.mipmaps),
-		format = rl_pixel_format_to_rendering_pixel_format[rl_texture.format],
-	}
-}
-
-rendering_mesh_to_rl_mesh :: proc(#by_ptr mesh: mesh) -> rl.Mesh {
-	return rl.Mesh {
-		vertexCount = c.int(mesh.vertex_count),
-		triangleCount = c.int(mesh.triangle_count),
-		vertices = mesh.vertices,
-		texcoords = mesh.texcoords,
-		texcoords2 = mesh.texcoords2,
-		normals = mesh.normals,
-		tangents = mesh.tangents,
-		colors = mesh.colors,
-		indices = mesh.indices,
-		animVertices = mesh.anim_vertices,
-		animNormals = mesh.anim_normals,
-		boneIds = mesh.bone_ids,
-		boneWeights = mesh.bone_weights,
-		vaoId = mesh.vao_id,
-		vboId = mesh.vbo_id,
-	}
-}
-
-rl_mesh_to_rendering_mesh :: proc(rl_mesh: rl.Mesh) -> mesh {
-	return {
-		vertex_count = uint(rl_mesh.vertexCount),
-		triangle_count = uint(rl_mesh.triangleCount),
-		vertices = rl_mesh.vertices,
-		texcoords = rl_mesh.texcoords,
-		texcoords2 = rl_mesh.texcoords2,
-		normals = rl_mesh.normals,
-		tangents = rl_mesh.tangents,
-		colors = rl_mesh.colors,
-		indices = rl_mesh.indices,
-		anim_vertices = rl_mesh.animVertices,
-		anim_normals = rl_mesh.animNormals,
-		bone_ids = rl_mesh.boneIds,
-		bone_weights = rl_mesh.boneWeights,
-		vao_id = rl_mesh.vaoId,
-		vbo_id = rl_mesh.vboId,
-	}
-}
-
-rendering_camera_projection_to_rl_projection :: proc(
-	#by_ptr projection: camera_projection,
-) -> rl.CameraProjection {
-	switch projection {
-	case .perspective:
-		return rl.CameraProjection.PERSPECTIVE
-	case .orthographic:
-		return rl.CameraProjection.ORTHOGRAPHIC
-	}
-	return rl.CameraProjection.PERSPECTIVE
-}
-
-rl_projection_to_rendering_camera_projection :: proc(
-	rl_projection: rl.CameraProjection,
-) -> camera_projection {
-	switch rl_projection {
-	case rl.CameraProjection.PERSPECTIVE:
-		return .perspective
-	case rl.CameraProjection.ORTHOGRAPHIC:
-		return .orthographic
-	}
-	return .perspective
-}
+keyboard_key :: rl.KeyboardKey
+mouse_button :: rl.MouseButton
+texture :: rl.Texture
+mesh :: rl.Mesh
+camera_projection :: rl.CameraProjection
 
 raylib_drawing_step :: struct {
 	using step: app_step,
@@ -305,17 +48,17 @@ raylib_window :: proc() -> window {
 
 raylib_input :: proc() -> input {
 	return {data = {}, is_key_down = proc(data: rawptr, key: keyboard_key) -> bool {
-			return rl.IsKeyDown(input_keyboard_key_to_rl_keyboard_key[key])
+			return rl.IsKeyDown(key)
 		}, is_key_pressed = proc(data: rawptr, key: keyboard_key) -> bool {
-			return rl.IsKeyPressed(input_keyboard_key_to_rl_keyboard_key[key])
+			return rl.IsKeyPressed(key)
 		}, is_key_released = proc(data: rawptr, key: keyboard_key) -> bool {
-			return rl.IsKeyReleased(input_keyboard_key_to_rl_keyboard_key[key])
+			return rl.IsKeyReleased(key)
 		}, is_mouse_down = proc(data: rawptr, button: mouse_button) -> bool {
-			return rl.IsMouseButtonDown(input_mouse_button_to_rl_mouse_button[button])
+			return rl.IsMouseButtonDown(button)
 		}, is_mouse_pressed = proc(data: rawptr, button: mouse_button) -> bool {
-			return rl.IsMouseButtonPressed(input_mouse_button_to_rl_mouse_button[button])
+			return rl.IsMouseButtonPressed(button)
 		}, is_mouse_released = proc(data: rawptr, button: mouse_button) -> bool {
-			return !rl.IsMouseButtonPressed(input_mouse_button_to_rl_mouse_button[button])
+			return !rl.IsMouseButtonPressed(button)
 		}, get_mouse_position = proc(data: rawptr) -> vec2 {
 			return rl.GetMousePosition()
 		}, get_mouse_delta = proc(data: rawptr) -> vec2 {
@@ -331,7 +74,7 @@ raylib_renderer :: proc() -> renderer {
 	return {data = {}, load_texture = proc(data: rawptr, filename: string) -> texture {
 			filename_cstr := strings.clone_to_cstring(filename, context.temp_allocator)
 			rl_texture := rl.LoadTexture(filename_cstr)
-			return rl_texture_to_rendering_texture(rl_texture)
+			return rl_texture
 		}, render_sprite = proc(
 			data: rawptr,
 			sprite: ^sprite,
@@ -341,7 +84,7 @@ raylib_renderer :: proc() -> renderer {
 			tint: color,
 			flip: [2]bool = {false, false},
 		) {
-			rl_texture := rendering_texture_to_rl_texture(sprite.texture)
+			rl_texture := sprite.texture
 			rlgl.PushMatrix()
 			rlgl.Translatef(position.x, position.y, 0)
 			rlgl.Rotatef(rotation, 0, 0, 1)
@@ -369,13 +112,12 @@ raylib_renderer :: proc() -> renderer {
 			rotation: vec3 = {},
 			scale: vec3 = {1, 1, 1},
 		) {
-			rl_mesh := rendering_mesh_to_rl_mesh(mesh^)
 			material := rl.LoadMaterialDefault()
 			m :=
 				rl.MatrixTranslate(position.x, position.y, position.z) *
 				rl.MatrixRotateXYZ(rotation) *
 				rl.MatrixScale(scale.x, scale.y, scale.z)
-			rl.DrawMesh(rl_mesh, material, m)
+			rl.DrawMesh(mesh^, material, m)
 		}}
 }
 
@@ -427,7 +169,7 @@ raylib_drawing_3d_step_system :: proc(#by_ptr step: raylib_drawing_step) {
 		up = {0, 1, 0}
 	}
 
-	projection := rendering_camera_projection_to_rl_projection(camera.projection)
+	projection := camera.projection
 
 	rl_camera := rl.Camera3D {
 		position   = position,

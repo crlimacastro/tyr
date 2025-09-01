@@ -14,42 +14,6 @@ rectangle :: struct {
 	x, y, width, height: fp,
 }
 
-pixel_format :: enum {
-	unknown = 0,
-	uncompressed_grayscale = 1, // 8 bit per pixel (no alpha)
-	uncompressed_gray_alpha, // 8*2 bpp (2 channels)
-	uncompressed_r5g6b5, // 16 bpp
-	uncompressed_r8g8b8, // 24 bpp
-	uncompressed_r5g5b5a1, // 16 bpp (1 bit alpha)
-	uncompressed_r4g4b4a4, // 16 bpp (4 bit alpha)
-	uncompressed_r8g8b8a8, // 32 bpp
-	uncompressed_r32, // 32 bpp (1 channel - float)
-	uncompressed_r32g32b32, // 32*3 bpp (3 channels - float)
-	uncompressed_r32g32b32a32, // 32*4 bpp (4 channels - float)
-	uncompressed_r16, // 16 bpp (1 channel - float)
-	uncompressed_r16g16b16, // 16*3 bpp (3 channels - float)
-	uncompressed_r16g16b16a16, // 16*4 bpp (4 channels - float)
-	compressed_dxt1_rgb, // 4 bpp (no alpha)
-	compressed_dxt1_rgba, // 4 bpp (1 bit alpha)
-	compressed_dxt3_rgba, // 8 bpp
-	compressed_dxt5_rgba, // 8 bpp
-	compressed_etc1_rgb, // 4 bpp
-	compressed_etc2_rgb, // 4 bpp
-	compressed_etc2_eac_rgba, // 8 bpp
-	compressed_pvrt_rgb, // 4 bpp
-	compressed_pvrt_rgba, // 4 bpp
-	compressed_astc_4x4_rgba, // 8 bpp
-	compressed_astc_8x8_rgba, // 2 bpp
-}
-
-texture :: struct {
-	id:      uint,
-	width:   int, // Image base width
-	height:  int, // Image base height
-	mipmaps: int, // Mipmap levels, 1 by default
-	format:  pixel_format, // Data format (PixelFormat type)
-}
-
 sprite :: struct {
 	texture: texture,
 	source:  rectangle,
@@ -63,33 +27,6 @@ sprite_new :: proc(texture: texture) -> sprite {
 		tint = white,
 		source = {0, 0, fp(texture.width), fp(texture.height)},
 	}
-}
-
-mesh :: struct {
-	vertex_count:   uint, // Number of vertices stored in arrays
-	triangle_count: uint, // Number of triangles stored (indexed or not)
-
-	// Default vertex data
-	vertices:       [^]f32, // Vertex position (XYZ - 3 components per vertex) (shader-location = 0)
-	texcoords:      [^]f32, // Vertex texture coordinates (UV - 2 components per vertex) (shader-location = 1)
-	texcoords2:     [^]f32, // Vertex second texture coordinates (useful for lightmaps) (shader-location = 5)
-	normals:        [^]f32, // Vertex normals (XYZ - 3 components per vertex) (shader-location = 2)
-	tangents:       [^]f32, // Vertex tangents (XYZW - 4 components per vertex) (shader-location = 4)
-	colors:         [^]u8, // Vertex colors (RGBA - 4 components per vertex) (shader-location = 3)
-	indices:        [^]u16, // Vertex indices (in case vertex data comes indexed)
-
-	// Animation vertex data
-	anim_vertices:  [^]f32, // Animated vertex positions (after bones transformations)
-	anim_normals:   [^]f32, // Animated normals (after bones transformations)
-	bone_ids:       [^]u8, // Vertex bone ids, up to 4 bones influence by vertex (skinning)
-	bone_weights:   [^]f32, // Vertex bone weight, up to 4 bones influence by vertex (skinning)
-	vao_id:         u32, // OpenGL Vertex Array Object id
-	vbo_id:         [^]u32, // OpenGL Vertex Buffer Objects id (default vertex data)
-}
-
-camera_projection :: enum {
-	perspective, // Perspective projection
-	orthographic, // Orthographic projection
 }
 
 camera3d :: struct {

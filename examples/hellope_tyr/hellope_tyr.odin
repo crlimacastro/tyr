@@ -40,7 +40,7 @@ main :: proc() {
 				rotation = quaternion(x = 0, y = 0, z = 0, w = 1),
 			},
 		)
-		ecs_set_component(step.ecs_ctx, e2, tyr.rl_mesh_to_rendering_mesh(rl.GenMeshCube(1, 1, 1)))
+		ecs_set_component(step.ecs_ctx, e2, rl.GenMeshCube(1, 1, 1))
 
 		e3 := ecs_create_entity(step.ecs_ctx)
 		ecs_set_component(step.ecs_ctx, e3, name("camera"))
@@ -53,11 +53,7 @@ main :: proc() {
 				rotation = quaternion(x = 0, y = 0, z = 0, w = 1),
 			},
 		)
-		ecs_set_component(
-			step.ecs_ctx,
-			e3,
-			tyr.camera{fovy = 45, projection = tyr.camera_projection.perspective},
-		)
+		ecs_set_component(step.ecs_ctx, e3, tyr.camera{fovy = 45, projection = .PERSPECTIVE})
 		main_cam := resources_get_or_make(step.resources, main_camera3d)
 		main_cam.entity = e3
 	})

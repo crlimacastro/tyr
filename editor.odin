@@ -93,7 +93,7 @@ editor_update_system :: proc(#by_ptr step: ui_update_step) {
 	if !ok {
 		return
 	}
-	ui_dockspace_over_viewport(step.ui, "tyr_editor_dockspace", {.passthru_central_node})
+	ui_dockspace_over_viewport(step.ui, "tyr_editor_dockspace", {.PassthruCentralNode})
 	scheduler_dispatch(
 		step.scheduler,
 		editor_update_step,
@@ -105,7 +105,7 @@ editor_scene_window_system :: proc(#by_ptr step: editor_update_step) {
 	if ui_begin_window(step.ui, "Scene") {
 		input, ok := resources_get(step.resources, input)
 		if ok {
-			if input_is_key_pressed(input, .escape) {
+			if input_is_key_pressed(input, .ESCAPE) {
 				step.editor_state.selection.is_entity_selected = false
 			}
 		}
@@ -130,7 +130,7 @@ editor_scene_window_system :: proc(#by_ptr step: editor_update_step) {
 		}
 
 		if ok {
-			if input_is_key_pressed(input, .delete) &&
+			if input_is_key_pressed(input, .DELETE) &&
 			   step.editor_state.selection.is_entity_selected {
 				ecs_destroy_entity(step.ecs_ctx, step.editor_state.selection.selected_entity)
 				step.editor_state.selection.is_entity_selected = false
@@ -144,17 +144,17 @@ editor_game_window_system :: proc(#by_ptr step: editor_update_step) {
 	input, ok := resources_get(step.resources, input)
 	if !ok {return}
 
-	if ui_begin_window(step.ui, "Game", nil, {.no_background, .no_title_bar}) {
+	if ui_begin_window(step.ui, "Game", nil, {.NoBackground, .NoTitleBar}) {
 		game_window_button_info :: struct {
 			label: string,
 			key:   keyboard_key,
 			mode:  editor_transform_mode,
 		}
 		buttons := [?]game_window_button_info {
-			{label = "Select   ", key = .q, mode = .select},
-			{label = "Translate", key = .w, mode = .translate},
-			{label = "Rotate   ", key = .e, mode = .rotate},
-			{label = "Scale    ", key = .r, mode = .scale},
+			{label = "Select   ", key = .Q, mode = .select},
+			{label = "Translate", key = .W, mode = .translate},
+			{label = "Rotate   ", key = .E, mode = .rotate},
+			{label = "Scale    ", key = .R, mode = .scale},
 		}
 		for btn in buttons {
 			label := fmt.tprintf("%s  ", btn.label)
@@ -230,7 +230,7 @@ editor_update_step_render_inspector :: proc(
 			// TODO dropdown
 			obj_any := any{obj, type}
 			enum_name, ok := reflect.enum_name_from_value_any(obj_any)
-			ui_input_text(step.ui, "##", &enum_name, {.read_only})
+			ui_input_text(step.ui, "##", &enum_name, {.ReadOnly})
 		case runtime.Type_Info_Dynamic_Array:
 			type_info_dyn_arr := type_info_named.base.variant.(runtime.Type_Info_Dynamic_Array)
 		// TODO list (with add button/remove buttons)

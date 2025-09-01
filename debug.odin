@@ -18,7 +18,7 @@ debug_render_fps_system :: proc(#by_ptr step: rendering_step) {
 	}
 	input, ok := resources_get(step.resources, input)
 	if !ok {return}
-	if input_is_key_pressed(input, .grave) {
+	if input_is_key_pressed(input, .GRAVE) {
 		debug_should_render_fps = !debug_should_render_fps
 	}
 	if !debug_should_render_fps {return}
