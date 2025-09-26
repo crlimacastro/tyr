@@ -288,6 +288,9 @@ editor_inspector_window_system :: proc(#by_ptr step: editor_update_step) {
 				step.editor_state.selection.selected_entity,
 				context.temp_allocator,
 			) {
+				if info.data == nil {
+					continue
+				}
 				label := fmt.tprintf("%s", info.id)
 				if ui_tree_node(step.ui, label) {
 					editor_update_step_render_inspector(step, info.id, info.data)

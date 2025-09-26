@@ -1,0 +1,15 @@
+// raddbg 0.9.21 project file
+
+recent_file: path: "editor.odin"
+recent_file: path: "ecs.odin"
+recent_file: path: "imgui.odin"
+recent_file: path: "ui.odin"
+recent_file: path: "editor_inspectors.odin"
+recent_file: path: "scheduler.odin"
+recent_file: path: "event.odin"
+target:
+{
+  executable: "hellope_tyr.exe"
+  working_directory: ""
+  enabled: 1
+}

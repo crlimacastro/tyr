@@ -251,6 +251,9 @@ imgui_ui :: proc() -> ui {
 		) -> bool {
 			label_cstr := strings.clone_to_cstring(label, context.temp_allocator)
 			buf_cstr := strings.clone_to_cstring(buf^, context.temp_allocator)
+			if buf_cstr == nil {
+				return false
+			}
 			ret := im.InputText(label_cstr, buf_cstr, cstring_buffers_length, flags)
 			if ret {
 				buf^ = strings.clone_from_cstring(buf_cstr)
