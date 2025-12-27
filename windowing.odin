@@ -130,7 +130,11 @@ windowing_save_prefs :: proc(resources: ^resources) {
 	if json_err != nil {
 		panic(fmt.tprintf("%s", json_err))
 	}
-	file, file_err := os.open(WINDOWING_PREFS_PATH, os.O_WRONLY | os.O_CREATE | os.O_TRUNC)
+	file, file_err := os.open(
+		WINDOWING_PREFS_PATH,
+		os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
+		mode = 0o644,
+	)
 	if file_err != nil {
 		panic(fmt.tprintf("%s", file_err))
 	}
