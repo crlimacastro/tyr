@@ -28,6 +28,8 @@ ui :: struct {
 		flags: ui_window_flags,
 	) -> bool,
 	end_window:              proc(data: rawptr),
+	push_id:                 proc(id: string),
+	pop_id:                  proc(),
 	button:                  proc(data: rawptr, label: string) -> bool,
 	selectable:              proc(
 		data: rawptr,
@@ -36,7 +38,11 @@ ui :: struct {
 		flags: ui_selectable_flags = {},
 		size: vec2,
 	) -> bool,
-	tree_node:               proc(data: rawptr, label: string) -> bool,
+	tree_node:               proc(
+		data: rawptr,
+		label: string,
+		flags: ui_tree_node_flags = {},
+	) -> bool,
 	tree_pop:                proc(data: rawptr),
 	color_edit_4:            proc(
 		data: rawptr,
@@ -142,6 +148,13 @@ ui :: struct {
 		buf: ^string,
 		flags: ui_input_text_flags = {},
 	) -> bool,
+	input_rune:              proc(
+		data: rawptr,
+		label: string,
+		rune: ^rune,
+		flags: ui_input_text_flags = {},
+	) -> bool,
+	text:                    proc(text: string),
 }
 
 ui_begin_window :: proc(
@@ -155,6 +168,14 @@ ui_begin_window :: proc(
 
 ui_end_window :: proc(ui: ^ui) {
 	ui.end_window(ui.data)
+}
+
+ui_push_id :: proc(ui: ^ui, id: string) {
+	ui.push_id(id)
+}
+
+ui_pop_id :: proc(ui: ^ui) {
+	ui.pop_id()
 }
 
 ui_button :: proc(ui: ^ui, label: string) -> bool {
@@ -171,8 +192,8 @@ ui_selectable :: proc(
 	return ui.selectable(ui.data, label, selected, flags, size)
 }
 
-ui_tree_node :: proc(ui: ^ui, label: string) -> bool {
-	return ui.tree_node(ui.data, label)
+ui_tree_node :: proc(ui: ^ui, label: string, flags: ui_tree_node_flags = {}) -> bool {
+	return ui.tree_node(ui.data, label, flags)
 }
 
 ui_tree_pop :: proc(ui: ^ui) {
@@ -321,6 +342,10 @@ ui_checkbox :: proc(ui: ^ui, label: string, v: ^bool) -> bool {
 	return ui.checkbox(ui.data, label, v)
 }
 
+ui_text :: proc(ui: ^ui, text: string) {
+	ui.text(text)
+}
+
 ui_main_menu_bar_update_step :: struct {
 	using step: app_step,
 	ui:         ^main_menu_bar_ui,
@@ -337,7 +362,7 @@ ui_plugin :: proc(app: ^app) {
 	app_add_systems(app, imgui_update_step, ui_update_system)
 }
 
-ui_main_menu_bar_update_system :: proc(#by_ptr step: imgui_main_menu_bar_update_step) {
+ui_main_menu_bar_update_system :: proc(step: imgui_main_menu_bar_update_step) {
 	ui, ok := resources_get(step.resources, main_menu_bar_ui)
 	if !ok {
 		return
@@ -349,7 +374,7 @@ ui_main_menu_bar_update_system :: proc(#by_ptr step: imgui_main_menu_bar_update_
 	)
 }
 
-ui_update_system :: proc(#by_ptr step: imgui_update_step) {
+ui_update_system :: proc(step: imgui_update_step) {
 	ui, ok := resources_get(step.resources, ui)
 	if !ok {
 		return
@@ -368,4 +393,13 @@ ui_input_text :: proc(
 	flags: ui_input_text_flags = {},
 ) -> bool {
 	return ui.input_text(ui.data, label, buf, flags)
+}
+
+ui_input_rune :: proc(
+	ui: ^ui,
+	label: string,
+	rune: ^rune,
+	flags: ui_input_text_flags = {},
+) -> bool {
+	return ui.input_rune(ui.data, label, rune, flags)
 }

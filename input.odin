@@ -17,7 +17,7 @@ input :: struct {
 input_action :: struct($t_value: typeid) {
 	activators: [dynamic]keyboard_key,
 	value:      $t_value,
-	processors: [dynamic]proc(#by_ptr value: $t_value) -> $t_value,
+	processors: [dynamic]proc(value: $t_value) -> $t_value,
 }
 
 input_is_key_down :: proc(input: ^input, value: keyboard_key) -> bool {
@@ -72,7 +72,7 @@ input_plugin :: proc(app: ^app) {
 	app_add_systems(app, update_step, input_toggle_fullscreen_on_alt_enter_system)
 }
 
-input_toggle_fullscreen_on_alt_enter_system :: proc(#by_ptr step: update_step) {
+input_toggle_fullscreen_on_alt_enter_system :: proc(step: update_step) {
 	input, ok := resources_get(step.resources, input)
 	if !ok {return}
 	if input_is_key_down(input, .LEFT_ALT) && input_is_key_pressed(input, .ENTER) {
@@ -82,7 +82,7 @@ input_toggle_fullscreen_on_alt_enter_system :: proc(#by_ptr step: update_step) {
 	}
 }
 
-input_quit_on_escape_system :: proc(#by_ptr step: update_step) {
+input_quit_on_escape_system :: proc(step: update_step) {
 	input, ok := resources_get(step.resources, input)
 	if !ok {return}
 	if input_is_key_pressed(input, .ESCAPE) {

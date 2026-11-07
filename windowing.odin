@@ -81,11 +81,11 @@ windowing_plugin :: proc(app: ^app) {
 	app_add_systems(app, stop_step, windowing_save_prefs_system)
 }
 
-windowing_load_prefs_system :: proc(#by_ptr step: start_step) {
+windowing_load_prefs_system :: proc(step: start_step) {
 	windowing_load_prefs(step.resources)
 }
 
-windowing_save_prefs_system :: proc(#by_ptr step: stop_step) {
+windowing_save_prefs_system :: proc(step: stop_step) {
 	windowing_save_prefs(step.resources)
 }
 
@@ -97,9 +97,9 @@ windowing_load_prefs :: proc(resources: ^resources) {
 	}
 	defer os.close(file)
 	data := []byte{}
-	prefs_json_data, file_ok := os.read_entire_file(file)
-	if !file_ok {
-		panic(fmt.tprintf("error reading file: %s", WINDOWING_PREFS_PATH))
+	prefs_json_data, err := os.read_entire_file(file, context.allocator)
+	if err != nil {
+		panic(fmt.tprintf("error reading file at %s: %v", WINDOWING_PREFS_PATH, err))
 	}
 	prefs := windowing_prefs{}
 	json_err := json.unmarshal(prefs_json_data, &prefs)
@@ -132,11 +132,11 @@ windowing_save_prefs :: proc(resources: ^resources) {
 	}
 	file, file_err := os.open(
 		WINDOWING_PREFS_PATH,
-		os.O_WRONLY | os.O_CREATE | os.O_TRUNC,
-		mode = 0o644,
+		flags={.Read, .Write, .Trunc, .Create},
+		perm={.Read_User, .Write_User, .Read_Group, .Read_Other},
 	)
 	if file_err != nil {
-		panic(fmt.tprintf("%s", file_err))
+		panic(fmt.tprintf("%v", os.error_string(file_err)))
 	}
 	defer os.close(file)
 	_, write_err := os.write(file, prefs_json_data)

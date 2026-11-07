@@ -40,7 +40,7 @@ app_run :: proc(a: ^app) {
 	a.is_running = true
 	prev_user_ptr := context.user_ptr
 	context.user_ptr = a
-	app_add_systems(a, app_quit, proc(#by_ptr e: app_quit) {
+	app_add_systems(a, app_quit, proc(e: app_quit) {
 		app := cast(^app)context.user_ptr
 		app.is_running = false
 	})
@@ -100,7 +100,7 @@ app_add_plugins :: proc(a: ^app, plugins: ..plugin) {
 	}
 }
 
-app_add_systems :: proc(a: ^app, $t_event: typeid, systems: ..proc(#by_ptr arg: t_event)) {
+app_add_systems :: proc(a: ^app, $t_event: typeid, systems: ..proc(arg: t_event)) {
 	scheduler_add_systems(&a.scheduler, t_event, ..systems)
 }
 

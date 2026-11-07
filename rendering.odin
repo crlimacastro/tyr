@@ -110,14 +110,14 @@ rendering_plugin :: proc(app: ^app) {
 	app_add_systems(app, rendering_step_3d, rendering_render_meshes_system)
 }
 
-rendering_quit_on_window_should_close_system :: proc(#by_ptr step: update_step) {
+rendering_quit_on_window_should_close_system :: proc(step: update_step) {
 	window, ok := resources_get(step.resources, window)
 	if !ok {return}
 	if !window_should_close(window) {return}
 	scheduler_dispatch(step.scheduler, app_quit, app_quit{step = step})
 }
 
-rendering_rendering_step_system :: proc(#by_ptr step: raylib_drawing_step) {
+rendering_rendering_step_system :: proc(step: raylib_drawing_step) {
 	renderer, ok := resources_get(step.resources, renderer)
 	if !ok {
 		return
@@ -129,7 +129,7 @@ rendering_rendering_step_system :: proc(#by_ptr step: raylib_drawing_step) {
 	)
 }
 
-rendering_rendering_step_3d_system :: proc(#by_ptr step: raylib_drawing_3d_step) {
+rendering_rendering_step_3d_system :: proc(step: raylib_drawing_3d_step) {
 	renderer, ok := resources_get(step.resources, renderer)
 	if !ok {
 		return
@@ -141,7 +141,7 @@ rendering_rendering_step_3d_system :: proc(#by_ptr step: raylib_drawing_3d_step)
 	)
 }
 
-rendering_render_sprites_system :: proc(#by_ptr step: rendering_step) {
+rendering_render_sprites_system :: proc(step: rendering_step) {
 	for e in ecs_tquery(step.ecs_ctx, {sprite}) {
 		sprite, _ := ecs_get_component(step.ecs_ctx, e, sprite)
 		position: vec2
@@ -172,7 +172,7 @@ rendering_render_sprites_system :: proc(#by_ptr step: rendering_step) {
 	}
 }
 
-rendering_render_meshes_system :: proc(#by_ptr step: rendering_step_3d) {
+rendering_render_meshes_system :: proc(step: rendering_step_3d) {
 	for e in ecs_tquery(step.ecs_ctx, {mesh}) {
 		mesh, _ := ecs_get_component(step.ecs_ctx, e, mesh)
 		position: vec3

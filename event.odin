@@ -1,13 +1,13 @@
 package tyr
 
 event :: struct($t_arg: typeid) {
-	listeners: [dynamic]proc(#by_ptr arg: t_arg),
+	listeners: [dynamic]proc(arg: t_arg),
 }
 
 event_add_listeners :: proc(
 	$t_arg: typeid,
 	e: ^event(t_arg),
-	listeners: ..proc(#by_ptr arg: t_arg),
+	listeners: ..proc(arg: t_arg),
 ) {
     append_elems(&e.listeners, ..listeners)
 }
@@ -15,7 +15,7 @@ event_add_listeners :: proc(
 event_remove_listeners :: proc(
 	$t_arg: typeid,
 	e: ^event(t_arg),
-	listeners: ..proc(#by_ptr arg: t_arg),
+	listeners: ..proc(arg: t_arg),
 ) {
 	for listener in listeners {
 		for l, i in e.listeners {
@@ -30,7 +30,7 @@ event_remove_listeners :: proc(
 event_rremove_listeners :: proc(
 	$t_arg: typeid,
 	e: ^event(t_arg),
-	listeners: ..proc(#by_ptr arg: t_arg),
+	listeners: ..proc(arg: t_arg),
 ) {
 	for listener in listeners {
 		#reverse for l, i in e.listeners {

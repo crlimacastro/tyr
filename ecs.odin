@@ -48,16 +48,17 @@ ecs_get_entities :: proc(ctx: ^ecs_context, allocator := context.allocator) -> [
 		entities[i] = key
 		i+=1
 	}
-	
+
 	return entities
 }
 
-ecs_add_component :: proc(ctx: ^ecs_context, entity: entity, component: $t) -> ^t {
+ecs_add_component :: proc(ctx: ^ecs_context, e: entity, component: $t) -> ^t {
 	if t not_in ctx.component_map {
 		array := new([dynamic]t)
 		ctx.component_map[t] = {
 			type = t,
 			data = cast(^runtime.Raw_Dynamic_Array)array,
+			entity_indices = make(map[entity]uint),
 		}
 		array^ = make_dynamic_array([dynamic]t)
 	}
@@ -68,9 +69,9 @@ ecs_add_component :: proc(ctx: ^ecs_context, entity: entity, component: $t) -> ^
 	// Add a new component to the component array.
 	append_elem(array, component)
 	// Map the entity to the new index, so we can lookup the component index later,
-	comp_map.entity_indices[entity] = len(array) - 1
+	comp_map.entity_indices[e] = len(array) - 1
 
-	return &array[comp_map.entity_indices[entity]]
+	return &array[comp_map.entity_indices[e]]
 }
 
 ecs_set_component :: proc(ctx: ^ecs_context, entity: entity, component: $t) {
@@ -220,7 +221,7 @@ ecs_is_entity_valid :: proc(ctx: ^ecs_context, entity: entity) -> bool {
 	return entity in ctx.entities
 }
 
-// This is slow. 
+// This is slow.
 // This will be significantly faster when an archetype or sparse set ECS is implemented.
 ecs_query :: proc(
 	ctx: ^ecs_context,
@@ -272,22 +273,28 @@ ecs_destroy_entity :: proc(ctx: ^ecs_context, entity: entity) {
 }
 
 ecs_get_components_of_entity :: proc(
-	ctx: ^ecs_context,
-	entity: entity,
-	allocator := context.allocator,
+    ctx: ^ecs_context,
+    entity: entity,
+    allocator := context.allocator,
 ) -> [dynamic]any {
-	components := make([dynamic]any, allocator)
-	for component_type in ctx.component_map {
-		components_of_type := ctx.component_map[component_type]
+    components := make([dynamic]any, allocator)
 
-		array := cast(^[dynamic]rawptr)components_of_type.data
-		index, is_entity_a_key := components_of_type.entity_indices[entity]
+    for component_type, components_of_type in ctx.component_map {
+        index, ok := components_of_type.entity_indices[entity]
+        if !ok {
+            continue
+        }
 
-		if is_entity_a_key {
-			append(&components, any{&array[index], component_type})
-		}
-	}
-	return components
+        info := type_info_of(component_type)
+        component_ptr := rawptr(
+            uintptr(components_of_type.data^.data) +
+            uintptr(index) * uintptr(info.size),
+        )
+
+        append(&components, any{component_ptr, component_type})
+    }
+
+    return components
 }
 
 // Copied and adjusted from here: https://github.com/odin-lang/Odin/blob/8fd318ea7a76b75974c834bb9d329958c81ce652/base/runtime/core_builtin.odin#L736

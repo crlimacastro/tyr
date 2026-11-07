@@ -1,6 +1,7 @@
 package tyr
 
 import "core:strings"
+import "core:unicode/utf8"
 import imrl "imgui_raylib_impl"
 import im "odin-imgui"
 
@@ -16,8 +17,11 @@ ui_dock_node_flag :: im.DockNodeFlag
 ui_dock_node_flags :: im.DockNodeFlags
 ui_input_text_flag :: im.InputTextFlag
 ui_input_text_flags :: im.InputTextFlags
+ui_tree_node_flag :: im.TreeNodeFlag
+ui_tree_node_flags :: im.TreeNodeFlags
 
 cstring_buffers_length :: 1024
+rune_buffers_length :: 4
 
 imgui_main_menu_bar_ui :: proc() -> main_menu_bar_ui {
 	return {data = {}, begin_menu = proc(data: rawptr, label: string) -> bool {
@@ -41,10 +45,19 @@ imgui_ui :: proc() -> ui {
 			flags: ui_window_flags,
 		) -> bool {
 			name_cstr := strings.clone_to_cstring(name, context.temp_allocator)
-			return im.Begin(name_cstr, open, flags)
+			ret := im.Begin(name_cstr, open, flags)
+			im.PushItemWidth(-1)
+			return ret
 		},
 		end_window = proc(data: rawptr) {
+			im.PopItemWidth()
 			im.End()
+		},
+		push_id =                 proc(id: string) {
+			im.PushID(strings.clone_to_cstring(id, allocator=context.temp_allocator))
+		},
+		pop_id =                  proc() {
+			im.PopID()
 		},
 		button = proc(data: rawptr, label: string) -> bool {
 			label_cstr := strings.clone_to_cstring(label, context.temp_allocator)
@@ -60,9 +73,9 @@ imgui_ui :: proc() -> ui {
 			label_cstr := strings.clone_to_cstring(label, context.temp_allocator)
 			return im.Selectable(label_cstr, selected, flags, size)
 		},
-		tree_node = proc(data: rawptr, label: string) -> bool {
+		tree_node = proc(data: rawptr, label: string, flags: ui_tree_node_flags = {}) -> bool {
 			label_cstr := strings.clone_to_cstring(label, context.temp_allocator)
-			return im.TreeNode(label_cstr)
+			return im.TreeNodeEx(label_cstr, flags)
 		},
 		tree_pop = proc(data: rawptr) {
 			im.TreePop()
@@ -260,6 +273,31 @@ imgui_ui :: proc() -> ui {
 			}
 			return ret
 		},
+		input_rune = proc(
+			data: rawptr,
+			label: string,
+			rune: ^rune,
+			flags: ui_input_text_flags = {},
+		) -> bool {
+			label_cstr := strings.clone_to_cstring(label, context.temp_allocator)
+			b: strings.Builder
+			strings.builder_init(&b, allocator = context.temp_allocator)
+			strings.write_rune(&b, rune^)
+			str := strings.to_string(b)
+			buf_cstr := strings.clone_to_cstring(str, context.temp_allocator)
+			if buf_cstr == nil {
+				return false
+			}
+			ret := im.InputText(label_cstr, buf_cstr, rune_buffers_length, flags)
+			if ret {
+				str = strings.clone_from_cstring(buf_cstr)
+				rune^ = utf8.rune_at(str, 0)
+			}
+			return ret
+		},
+		text = proc(text: string) {
+			im.Text(strings.clone_to_cstring(text, allocator = context.temp_allocator))
+		},
 	}
 }
 
@@ -291,7 +329,7 @@ imgui_plugin :: proc(app: ^app) {
 	app_add_systems(app, deinit_step, imgui_deinit_system)
 }
 
-imgui_update_system :: proc(#by_ptr step: rendering_step) {
+imgui_update_system :: proc(step: rendering_step) {
 	imrl.process_events()
 	imrl.new_frame()
 	im.NewFrame()
@@ -312,7 +350,7 @@ imgui_update_system :: proc(#by_ptr step: rendering_step) {
 	im.RenderPlatformWindowsDefault()
 }
 
-imgui_deinit_system :: proc(#by_ptr step: deinit_step) {
+imgui_deinit_system :: proc(step: deinit_step) {
 	imrl.shutdown()
 	im.DestroyContext()
 }

@@ -1,9 +1,8 @@
 package tyr
 
-import "base:intrinsics"
 import "base:runtime"
 import "core:fmt"
-import "core:mem"
+import "core:math/linalg"
 import "core:reflect"
 
 editor_transform_mode :: enum {
@@ -18,7 +17,7 @@ editor_entity_selection :: struct {
 	selected_entity:    entity,
 }
 
-editor_type_inspector :: proc(ui: ^ui, obj: rawptr)
+editor_type_inspector :: proc(ui: ^ui, ptr: rawptr, info: ^reflect.Type_Info)
 
 editor_state :: struct {
 	type_inspectors: map[typeid]editor_type_inspector,
@@ -60,7 +59,7 @@ editor_plugin :: proc(app: ^app) {
 	)
 }
 
-editor_main_menu_bar_system :: proc(#by_ptr step: ui_main_menu_bar_update_step) {
+editor_main_menu_bar_system :: proc(step: ui_main_menu_bar_update_step) {
 	if main_menu_bar_ui_begin_menu(step.ui, "File") {
 		if main_menu_bar_ui_menu_item(step.ui, "New Project") {
 			for entity in ecs_get_entities(step.ecs_ctx, context.temp_allocator) {
@@ -88,7 +87,7 @@ editor_main_menu_bar_system :: proc(#by_ptr step: ui_main_menu_bar_update_step) 
 
 }
 
-editor_update_system :: proc(#by_ptr step: ui_update_step) {
+editor_update_system :: proc(step: ui_update_step) {
 	state, ok := resources_get(step.resources, editor_state)
 	if !ok {
 		return
@@ -101,7 +100,7 @@ editor_update_system :: proc(#by_ptr step: ui_update_step) {
 	)
 }
 
-editor_scene_window_system :: proc(#by_ptr step: editor_update_step) {
+editor_scene_window_system :: proc(step: editor_update_step) {
 	if ui_begin_window(step.ui, "Scene") {
 		input, ok := resources_get(step.resources, input)
 		if ok {
@@ -118,7 +117,6 @@ editor_scene_window_system :: proc(#by_ptr step: editor_update_step) {
 					label = fmt.tprintf("%s (%s)", name^, label)
 				}
 			}
-
 
 			is_selected :=
 				step.editor_state.selection.is_entity_selected &&
@@ -140,7 +138,7 @@ editor_scene_window_system :: proc(#by_ptr step: editor_update_step) {
 	ui_end_window(step.ui)
 }
 
-editor_game_window_system :: proc(#by_ptr step: editor_update_step) {
+editor_game_window_system :: proc(step: editor_update_step) {
 	input, ok := resources_get(step.resources, input)
 	if !ok {return}
 
@@ -170,12 +168,12 @@ editor_game_window_system :: proc(#by_ptr step: editor_update_step) {
 }
 
 
-editor_resources_window_system :: proc(#by_ptr step: editor_update_step) {
+editor_resources_window_system :: proc(step: editor_update_step) {
 	if ui_begin_window(step.ui, "Resources") {
 		for res_type, &res_val in step.resources {
 			label := fmt.tprintf("%s", res_type)
-			if ui_tree_node(step.ui, label) {
-				editor_update_step_render_inspector(step, res_type, res_val)
+			if ui_tree_node(step.ui, label, {.DefaultOpen}) {
+				editor_update_step_render_inspector(step, res_val, type_info_of(res_type))
 				ui_tree_pop(step.ui)
 			}
 
@@ -184,118 +182,193 @@ editor_resources_window_system :: proc(#by_ptr step: editor_update_step) {
 	ui_end_window(step.ui)
 }
 
-editor_has_inspector :: proc(editor: ^editor_state, type: typeid) -> bool {
-	type_has_inspector := type in editor.type_inspectors
-	if type_has_inspector {return true}
-	type_info := type_info_of(type)
-	#partial switch v in type_info.variant {
-	case runtime.Type_Info_Named:
-		type_info_named := type_info.variant.(runtime.Type_Info_Named)
-		base_has_inspector := editor_has_inspector(editor, type_info_named.base.id)
-		if base_has_inspector {return true}
-	case runtime.Type_Info_Struct:
-		type_info_struct := type_info.variant.(runtime.Type_Info_Struct)
-		field_type_infos := type_info_struct.types
-		for i in 0 ..< type_info_struct.field_count {
-			field_type_info := field_type_infos[i]
-			if editor_has_inspector(editor, field_type_info.id) {return true}
-		}
-	case runtime.Type_Info_Array:
-		type_info_arr := type_info.variant.(runtime.Type_Info_Array)
-		if editor_has_inspector(editor, type_info_arr.elem.id) {return true}
-	}
-
-
-	return false
-}
-
 editor_update_step_render_inspector :: proc(
-	#by_ptr step: editor_update_step,
-	type: typeid,
-	obj: rawptr,
+	step: editor_update_step,
+	ptr: rawptr,
+	info: ^reflect.Type_Info,
 ) {
-	drawer, ok := step.editor_state.type_inspectors[type]
+	drawer, ok := step.editor_state.type_inspectors[info.id]
 	if ok {
-		drawer(step.ui, obj)
+		drawer(step.ui, ptr, info)
 		return
 	}
 
-	type_info := type_info_of(type)
-	#partial switch v in type_info.variant {
+	#partial switch v in info.variant {
 	case runtime.Type_Info_Named:
-		type_info_named := type_info.variant.(runtime.Type_Info_Named)
-		#partial switch v in type_info_named.base.variant {
-		case runtime.Type_Info_Enum:
-			type_info_enum := type_info_named.base.variant.(runtime.Type_Info_Enum)
-			// TODO dropdown
-			obj_any := any{obj, type}
-			enum_name, ok := reflect.enum_name_from_value_any(obj_any)
-			ui_input_text(step.ui, "##", &enum_name, {.ReadOnly})
-		case runtime.Type_Info_Dynamic_Array:
-			type_info_dyn_arr := type_info_named.base.variant.(runtime.Type_Info_Dynamic_Array)
-		// TODO list (with add button/remove buttons)
-		case runtime.Type_Info_Struct:
-			type_info_struct := type_info_named.base.variant.(runtime.Type_Info_Struct)
-
-			field_type_infos := type_info_struct.types
-			field_names := reflect.struct_field_names(type)
-			field_tags := type_info_struct.tags
-			field_count := len(field_names)
-
-			for i in 0 ..< type_info_struct.field_count {
-				field_type_info := field_type_infos[i]
-				if !editor_has_inspector(step.editor_state, field_type_info.id) {continue}
-
-				field_name := field_names[i]
-				field_tag := field_tags[i]
-				field := reflect.struct_field_by_name(type, field_name)
-				obj_any := any{obj, type}
-				field_value_any := reflect.struct_field_value(obj_any, field)
-				if field_value_any == nil {continue}
-
-				if ui_tree_node(step.ui, field_name) {
-					editor_update_step_render_inspector(
-						step,
-						field_value_any.id,
-						field_value_any.data,
-					)
-					ui_tree_pop(step.ui)
-				}
+		editor_update_step_render_inspector(step, ptr, v.base)
+	case runtime.Type_Info_Integer:
+		if v.signed {
+			switch info.size {
+			case size_of(i16):
+				val := cast(^i16)ptr
+				val_i32 := cast(i32)val^
+				ui_drag_int(step.ui, "##", &val_i32, v_min = i32(min(i16)), v_max = i32(max(i16)))
+				val^ = cast(i16)val_i32
+			case size_of(i32):
+				val := cast(^i32)ptr
+				ui_drag_int(step.ui, "##", val)
+			case size_of(i64):
+				val := cast(^i64)ptr
+				val_i32 := cast(i32)val^
+				ui_drag_int(step.ui, "##", &val_i32)
+				val^ = cast(i64)val_i32
+			case size_of(i128):
+				val := cast(^i128)ptr
+				val_i32 := cast(i32)val^
+				ui_drag_int(step.ui, "##", &val_i32)
+				val^ = cast(i128)val_i32
+			case:
+				unreachable()
+			}
+		} else {
+			switch info.size {
+			case size_of(u16):
+				val := cast(^u16)ptr
+				val_u32 := cast(u32)val^
+				ui_drag_uint(step.ui, "##", &val_u32, v_min = u32(min(u16)), v_max = u32(max(u16)))
+				val^ = cast(u16)val_u32
+			case size_of(u32):
+				val := cast(^u32)ptr
+				ui_drag_uint(step.ui, "##", val)
+			case size_of(u64):
+				val := cast(^u64)ptr
+				val_u32 := cast(u32)val^
+				ui_drag_uint(step.ui, "##", &val_u32)
+				val^ = cast(u64)val_u32
+			case size_of(u128):
+				val := cast(^u128)ptr
+				val_i32 := cast(i32)val^
+				ui_drag_int(step.ui, "##", &val_i32)
+				val^ = cast(u128)val_i32
+			case:
+				unreachable()
 			}
 		}
-		if type_info_named.base != nil &&
-		   editor_has_inspector(step.editor_state, type_info_named.base.id) {
-			editor_update_step_render_inspector(step, type_info_named.base.id, obj)
+	case runtime.Type_Info_Rune:
+		val := cast(^rune)ptr
+		ui_input_rune(step.ui, "##", val)
+	case runtime.Type_Info_Float:
+		switch info.size {
+		case size_of(f16):
+			val := cast(^f16)ptr
+			val_f32 := cast(f32)val^
+			ui_drag_float(step.ui, "##", &val_f32, v_min = f32(min(f16)), v_max = f32(max(f16)))
+			val^ = cast(f16)val_f32
+		case size_of(f32):
+			val := cast(^f32)ptr
+			ui_drag_float(step.ui, "##", val)
+		case size_of(f64):
+			val := cast(^f64)ptr
+			val_f32 := cast(f32)val^
+			ui_drag_float(step.ui, "##", &val_f32)
+			val^ = cast(f64)val_f32
+		case:
+			unreachable()
 		}
+	// case runtime.Type_Info_Complex:
+	case runtime.Type_Info_Quaternion:
+		switch info.size {
+		case size_of(quaternion64):
+			val := cast(^quaternion64)ptr
+			val_quaternion128 := cast(quaternion128)val^
+			x, y, z := linalg.euler_angles_xyz_from_quaternion(val_quaternion128)
+			euler_fp := [?]fp{x, y, z} * linalg.DEG_PER_RAD
+			ui_drag_float3(step.ui, "##", &euler_fp, v_min = f32(min(f16)), v_max = f32(max(f16)))
+			euler_fp = euler_fp * linalg.RAD_PER_DEG
+			dst := linalg.quaternion_from_euler_angles(euler_fp.x, euler_fp.y, euler_fp.z, .XYZ)
+			val^ = cast(quaternion64)dst
+		case size_of(quaternion128):
+			val := cast(^quaternion128)ptr
+			x, y, z := linalg.euler_angles_xyz_from_quaternion(val^)
+			euler_fp := [?]fp{x, y, z} * linalg.DEG_PER_RAD
+			ui_drag_float3(step.ui, "##", &euler_fp)
+			euler_fp = euler_fp * linalg.RAD_PER_DEG
+			dst := linalg.quaternion_from_euler_angles(euler_fp.x, euler_fp.y, euler_fp.z, .XYZ)
+			val^ = dst
+		case size_of(quaternion256):
+			val := cast(^quaternion256)ptr
+			val_quaternion128 := cast(quaternion128)val^
+			x, y, z := linalg.euler_angles_xyz_from_quaternion(val_quaternion128)
+			euler_fp := [?]fp{x, y, z} * linalg.DEG_PER_RAD
+			ui_drag_float3(step.ui, "##", &euler_fp)
+			euler_fp = euler_fp * linalg.RAD_PER_DEG
+			dst := linalg.quaternion_from_euler_angles(euler_fp.x, euler_fp.y, euler_fp.z, .XYZ)
+			val^ = cast(quaternion256)dst
+		case:
+			unreachable()
+		}
+	case runtime.Type_Info_String:
+		val := cast(^string)ptr
+		ui_input_text(step.ui, "##", val)
+	case runtime.Type_Info_Boolean:
+		val := cast(^bool)ptr
+		ui_checkbox(step.ui, "##", val)
+	// case runtime.Type_Info_Any:
+	// case runtime.Type_Info_Type_Id:
+	// case runtime.Type_Info_Pointer:
+	// case runtime.Type_Info_Multi_Pointer:
+	// case runtime.Type_Info_Procedure:
 	case runtime.Type_Info_Array:
-		type_info_arr := type_info.variant.(runtime.Type_Info_Array)
-		if (editor_has_inspector(step.editor_state, type_info_arr.elem.id)) {
-			arr_ptr := cast([^]byte)(obj)
-			for i in 0 ..< type_info_arr.count {
-				elem_ptr := rawptr(uintptr(arr_ptr) + uintptr(i * type_info_arr.elem_size))
-				editor_update_step_render_inspector(step, type_info_arr.elem.id, elem_ptr)
-			}
+		for i in 0 ..< v.count {
+			ui_push_id(step.ui, tprintf("%v", i))
+			elem_ptr := rawptr(uintptr(ptr) + uintptr(i * v.elem_size))
+			editor_update_step_render_inspector(step, elem_ptr, v.elem)
+			ui_pop_id(step.ui)
 		}
+	// case runtime.Type_Info_Enumerated_Array:
+	// case runtime.Type_Info_Dynamic_Array:
+	// TODO list (with add/remove buttons)
+	// case runtime.Type_Info_Slice:
+	// case runtime.Type_Info_Parameters:
+	case runtime.Type_Info_Struct:
+		for i in 0 ..< v.field_count {
+			field_ptr := rawptr(uintptr(ptr) + uintptr(v.offsets[i]))
+			ui_push_id(step.ui, v.names[i])
+			if ui_tree_node(step.ui, v.names[i], {.DefaultOpen}) {
+				editor_update_step_render_inspector(step, field_ptr, v.types[i])
+				ui_tree_pop(step.ui)
+			}
+			ui_pop_id(step.ui)
+		}
+	// case runtime.Type_Info_Union:
+	case runtime.Type_Info_Enum:
+		// TODO dropdown
+		ptr_any := any{ptr, info.id}
+		enum_name, ok := reflect.enum_name_from_value_any(ptr_any)
+		if ok {
+			ui_input_text(step.ui, "##", &enum_name, {.ReadOnly})
+		}
+	// case runtime.Type_Info_Map:
+	// case runtime.Type_Info_Bit_Set:
+	// case runtime.Type_Info_Simd_Vector:
+	// case runtime.Type_Info_Matrix:
+	// case runtime.Type_Info_Soa_Pointer:
+	// case runtime.Type_Info_Bit_Field:
+	// case runtime.Type_Info_Fixed_Capacity_Dynamic_Array:
+	case:
+		ui_text(step.ui, fmt.tprintf("TODO: %v", info))
 	}
 }
 
-editor_inspector_window_system :: proc(#by_ptr step: editor_update_step) {
+editor_inspector_window_system :: proc(step: editor_update_step) {
 	if ui_begin_window(step.ui, "Inspector") {
 		if step.editor_state.selection.is_entity_selected &&
 		   ecs_is_entity_valid(step.ecs_ctx, step.editor_state.selection.selected_entity) {
-			for info in ecs_get_components_of_entity(
-				step.ecs_ctx,
-				step.editor_state.selection.selected_entity,
-				context.temp_allocator,
-			) {
-				if info.data == nil {
+			for component in ecs_get_components_of_entity(step.ecs_ctx, step.editor_state.selection.selected_entity, context.temp_allocator) {
+				if component.data == nil {
 					continue
 				}
-				label := fmt.tprintf("%s", info.id)
-				if ui_tree_node(step.ui, label) {
-					editor_update_step_render_inspector(step, info.id, info.data)
+				label := fmt.tprintf("%s", component.id)
+				ui_push_id(step.ui, label)
+				if ui_tree_node(step.ui, label, {.DefaultOpen}) {
+					editor_update_step_render_inspector(
+						step,
+						component.data,
+						type_info_of(component.id),
+					)
 					ui_tree_pop(step.ui)
 				}
+				ui_pop_id(step.ui)
 			}
 		}
 	}

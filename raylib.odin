@@ -136,7 +136,7 @@ raylib_plugin :: proc(app: ^app) {
 	app_add_systems(app, deinit_step, raylib_deinit_system)
 }
 
-raylib_drawing_step_system :: proc(#by_ptr step: update_step) {
+raylib_drawing_step_system :: proc(step: update_step) {
 	rl.BeginDrawing()
 	defer rl.EndDrawing()
 
@@ -150,7 +150,7 @@ raylib_drawing_step_system :: proc(#by_ptr step: update_step) {
 	scheduler_dispatch(step.scheduler, raylib_drawing_step, raylib_drawing_step{step = step})
 }
 
-raylib_drawing_3d_step_system :: proc(#by_ptr step: raylib_drawing_step) {
+raylib_drawing_3d_step_system :: proc(step: raylib_drawing_step) {
 	main_camera, ok := resources_get(step.resources, main_camera3d)
 	if !ok {
 		return
@@ -185,6 +185,6 @@ raylib_drawing_3d_step_system :: proc(#by_ptr step: raylib_drawing_step) {
 	scheduler_dispatch(step.scheduler, raylib_drawing_3d_step, raylib_drawing_3d_step{step = step})
 }
 
-raylib_deinit_system :: proc(#by_ptr step: deinit_step) {
+raylib_deinit_system :: proc(step: deinit_step) {
 	rl.CloseWindow()
 }

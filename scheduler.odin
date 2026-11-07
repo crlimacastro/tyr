@@ -8,7 +8,7 @@ scheduler :: distinct map[typeid]rawptr
 scheduler_add_systems :: proc(
 	s: ^scheduler,
 	$t_event: typeid,
-	systems: ..proc(#by_ptr arg: t_event),
+	systems: ..proc(arg: t_event),
 ) {
 	if t_event not_in s {
 		e, err := mem.alloc(size_of(event(t_event)))
@@ -24,7 +24,7 @@ scheduler_add_systems :: proc(
 scheduler_remove_systems :: proc(
 	s: ^scheduler,
 	$t_event: typeid,
-	systems: ..proc(#by_ptr arg: t_event),
+	systems: ..proc(arg: t_event),
 ) {
 	if t_event not_in s {
 		return
