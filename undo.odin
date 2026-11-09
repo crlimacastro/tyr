@@ -116,7 +116,7 @@ undo_history_undo :: proc(history: ^undo_history, ctx: ^ecs_context) {
 
 	change := &history.changes[history.cursor - 1]
 
-	ptr := change.target.ptr
+	ptr := rawptr(uintptr(change.target.ptr) + change.target.offset)
 	if ptr == nil {
 		return
 	}
@@ -135,7 +135,7 @@ undo_history_redo :: proc(history: ^undo_history, ctx: ^ecs_context) {
 
 	change := &history.changes[history.cursor]
 
-	ptr := change.target.ptr
+	ptr := rawptr(uintptr(change.target.ptr) + change.target.offset)
 	if ptr == nil {
 		return
 	}

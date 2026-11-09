@@ -344,7 +344,7 @@ editor_update_step_render_inspector :: proc(
 			offset := uintptr(i * v.elem_size)
 			elem_ptr := rawptr(uintptr(ptr) + offset)
 			target := target
-			target.offset = offset
+			target.offset += offset
 			editor_update_step_render_inspector(step, elem_ptr, v.elem, target)
 			ui_pop_id(step.ui)
 		}
@@ -360,7 +360,7 @@ editor_update_step_render_inspector :: proc(
 			ui_push_id(step.ui, v.names[i])
 			if ui_tree_node(step.ui, v.names[i], {.DefaultOpen}) {
 				target := target
-				target.offset = offset
+				target.offset += offset
 				editor_update_step_render_inspector(step, field_ptr, v.types[i], target)
 				ui_tree_pop(step.ui)
 			}
