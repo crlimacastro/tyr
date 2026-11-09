@@ -20,37 +20,37 @@ main_menu_bar_ui_menu_item :: proc(ui: ^main_menu_bar_ui, label: string) -> bool
 }
 
 ui :: struct {
-	data:                    rawptr,
-	begin_window:            proc(
+	data:                           rawptr,
+	begin_window:                   proc(
 		data: rawptr,
 		name: string,
 		open: ^bool,
 		flags: ui_window_flags,
 	) -> bool,
-	end_window:              proc(data: rawptr),
-	push_id:                 proc(id: string),
-	pop_id:                  proc(),
-	button:                  proc(data: rawptr, label: string) -> bool,
-	selectable:              proc(
+	end_window:                     proc(data: rawptr),
+	push_id:                        proc(id: string),
+	pop_id:                         proc(),
+	button:                         proc(data: rawptr, label: string) -> bool,
+	selectable:                     proc(
 		data: rawptr,
 		label: string,
 		selected: bool = false,
 		flags: ui_selectable_flags = {},
 		size: vec2,
 	) -> bool,
-	tree_node:               proc(
+	tree_node:                      proc(
 		data: rawptr,
 		label: string,
 		flags: ui_tree_node_flags = {},
 	) -> bool,
-	tree_pop:                proc(data: rawptr),
-	color_edit_4:            proc(
+	tree_pop:                       proc(data: rawptr),
+	color_edit_4:                   proc(
 		data: rawptr,
 		label: string,
 		col: ^[4]fp,
 		flags: ui_color_edit_flags = {},
 	) -> bool,
-	drag_int:                proc(
+	drag_int:                       proc(
 		data: rawptr,
 		label: string,
 		v: ^i32,
@@ -60,7 +60,7 @@ ui :: struct {
 		format: string = "%d",
 		flags: ui_slider_flags = {},
 	) -> bool,
-	drag_int2:               proc(
+	drag_int2:                      proc(
 		data: rawptr,
 		label: string,
 		v: ^[2]i32,
@@ -70,7 +70,7 @@ ui :: struct {
 		format: string = "%d",
 		flags: ui_slider_flags = {},
 	) -> bool,
-	drag_int3:               proc(
+	drag_int3:                      proc(
 		data: rawptr,
 		label: string,
 		v: ^[3]i32,
@@ -80,7 +80,7 @@ ui :: struct {
 		format: string = "%d",
 		flags: ui_slider_flags = {},
 	) -> bool,
-	drag_uint:               proc(
+	drag_uint:                      proc(
 		data: rawptr,
 		label: string,
 		v: ^u32,
@@ -90,7 +90,7 @@ ui :: struct {
 		format: string = "%u",
 		flags: ui_slider_flags = {},
 	) -> bool,
-	drag_uint2:              proc(
+	drag_uint2:                     proc(
 		data: rawptr,
 		label: string,
 		v: ^[2]u32,
@@ -100,7 +100,7 @@ ui :: struct {
 		format: string = "%u",
 		flags: ui_slider_flags = {},
 	) -> bool,
-	drag_uint3:              proc(
+	drag_uint3:                     proc(
 		data: rawptr,
 		label: string,
 		v: ^[3]u32,
@@ -110,7 +110,7 @@ ui :: struct {
 		format: string = "%u",
 		flags: ui_slider_flags = {},
 	) -> bool,
-	drag_float:              proc(
+	drag_float:                     proc(
 		data: rawptr,
 		label: string,
 		v: ^fp,
@@ -120,7 +120,7 @@ ui :: struct {
 		format: string = "%.3f",
 		flags: ui_slider_flags = {},
 	) -> bool,
-	drag_float2:             proc(
+	drag_float2:                    proc(
 		data: rawptr,
 		label: string,
 		v: ^[2]fp,
@@ -130,7 +130,7 @@ ui :: struct {
 		format: string = "%.3f",
 		flags: ui_slider_flags = {},
 	) -> bool,
-	drag_float3:             proc(
+	drag_float3:                    proc(
 		data: rawptr,
 		label: string,
 		v: ^[3]fp,
@@ -140,21 +140,23 @@ ui :: struct {
 		format: string = "%.3f",
 		flags: ui_slider_flags = {},
 	) -> bool,
-	checkbox:                proc(data: rawptr, label: string, v: ^bool) -> bool,
-	dockspace_over_viewport: proc(data: rawptr, id: string, flags: ui_dock_node_flags = {}),
-	input_text:              proc(
+	checkbox:                       proc(data: rawptr, label: string, v: ^bool) -> bool,
+	dockspace_over_viewport:        proc(data: rawptr, id: string, flags: ui_dock_node_flags = {}),
+	input_text:                     proc(
 		data: rawptr,
 		label: string,
 		buf: ^string,
 		flags: ui_input_text_flags = {},
 	) -> bool,
-	input_rune:              proc(
+	input_rune:                     proc(
 		data: rawptr,
 		label: string,
 		rune: ^rune,
 		flags: ui_input_text_flags = {},
 	) -> bool,
-	text:                    proc(text: string),
+	text:                           proc(text: string),
+	is_item_activated:              proc() -> bool,
+	is_item_deactivated_after_edit: proc() -> bool,
 }
 
 ui_begin_window :: proc(
@@ -402,4 +404,12 @@ ui_input_rune :: proc(
 	flags: ui_input_text_flags = {},
 ) -> bool {
 	return ui.input_rune(ui.data, label, rune, flags)
+}
+
+ui_is_item_activated :: proc(ui: ^ui) -> bool {
+	return ui.is_item_activated()
+}
+
+ui_is_item_deactivated_after_edit :: proc(ui: ^ui) -> bool {
+	return ui.is_item_deactivated_after_edit()
 }

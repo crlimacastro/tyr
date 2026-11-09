@@ -175,6 +175,31 @@ ecs_get_component :: proc(
 	return &array[index], true
 }
 
+ecs_get_component_raw :: proc(
+	ctx: ^ecs_context,
+	entity: entity,
+	t: typeid,
+) -> (
+	component: rawptr,
+	ok: bool,
+) {
+	if !ecs_has_component(ctx, entity, t) {
+		return nil, false
+	}
+
+	array := ctx.component_map[t].data
+	index, is_entity_a_key := ctx.component_map[t].entity_indices[entity]
+
+	if !is_entity_a_key {
+		return nil, false
+	}
+
+	info := type_info_of(t)
+	component_location := uintptr(array.data) + uintptr(uint(info.size) * index)
+
+	return rawptr(component_location), true
+}
+
 ecs_get_components :: proc(ctx: ^ecs_context, entity: entity, ts: ..$t) -> []^t {
 
 	for t in ts {

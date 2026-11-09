@@ -24,6 +24,7 @@ editor_state :: struct {
 	selection:       editor_entity_selection,
 	transform_mode:  editor_transform_mode,
 	open_scenes:     [dynamic]scene,
+	undo_history:    undo_history,
 }
 
 editor_state_register_inspector :: proc(
@@ -56,6 +57,7 @@ editor_plugin :: proc(app: ^app) {
 		// editor_game_window_system,
 		editor_resources_window_system,
 		editor_inspector_window_system,
+		editor_undo_system,
 	)
 }
 
@@ -74,17 +76,19 @@ editor_main_menu_bar_system :: proc(step: ui_main_menu_bar_update_step) {
 	}
 
 	if main_menu_bar_ui_begin_menu(step.ui, "Edit") {
+		state, ok_state := resources_get(step.resources, editor_state)
+		if !ok_state do return
+
 		if main_menu_bar_ui_menu_item(step.ui, "Undo") {
-			// TODO
+			undo_history_undo(&state.undo_history, step.ecs_ctx)
 		}
 
 		if main_menu_bar_ui_menu_item(step.ui, "Redo") {
-			// TODO
+			undo_history_redo(&state.undo_history, step.ecs_ctx)
 		}
 
 		main_menu_bar_ui_end_menu(step.ui)
 	}
-
 }
 
 editor_update_system :: proc(step: ui_update_step) {
@@ -173,7 +177,12 @@ editor_resources_window_system :: proc(step: editor_update_step) {
 		for res_type, &res_val in step.resources {
 			label := fmt.tprintf("%s", res_type)
 			if ui_tree_node(step.ui, label, {.DefaultOpen}) {
-				editor_update_step_render_inspector(step, res_val, type_info_of(res_type))
+				editor_update_step_render_inspector(
+					step,
+					res_val,
+					type_info_of(res_type),
+					undo_target{ptr = res_val, type = res_type, offset = 0},
+				)
 				ui_tree_pop(step.ui)
 			}
 
@@ -186,7 +195,28 @@ editor_update_step_render_inspector :: proc(
 	step: editor_update_step,
 	ptr: rawptr,
 	info: ^reflect.Type_Info,
+	target: undo_target,
 ) {
+	before := undo_snapshot_value(ptr, info, context.allocator)
+
+	defer {
+		if ui_is_item_activated(step.ui) {
+			undo_transaction_begin(
+				&step.editor_state.undo_history,
+				target,
+				info,
+				ptr,
+				context.allocator,
+			)
+		}
+
+		undo_value_destroy(&before)
+
+		if ui_is_item_deactivated_after_edit(step.ui) {
+			undo_transaction_commit(&step.editor_state.undo_history, step.ecs_ctx)
+		}
+	}
+
 	drawer, ok := step.editor_state.type_inspectors[info.id]
 	if ok {
 		drawer(step.ui, ptr, info)
@@ -195,7 +225,7 @@ editor_update_step_render_inspector :: proc(
 
 	#partial switch v in info.variant {
 	case runtime.Type_Info_Named:
-		editor_update_step_render_inspector(step, ptr, v.base)
+		editor_update_step_render_inspector(step, ptr, v.base, target)
 	case runtime.Type_Info_Integer:
 		if v.signed {
 			switch info.size {
@@ -311,8 +341,11 @@ editor_update_step_render_inspector :: proc(
 	case runtime.Type_Info_Array:
 		for i in 0 ..< v.count {
 			ui_push_id(step.ui, tprintf("%v", i))
-			elem_ptr := rawptr(uintptr(ptr) + uintptr(i * v.elem_size))
-			editor_update_step_render_inspector(step, elem_ptr, v.elem)
+			offset := uintptr(i * v.elem_size)
+			elem_ptr := rawptr(uintptr(ptr) + offset)
+			target := target
+			target.offset = offset
+			editor_update_step_render_inspector(step, elem_ptr, v.elem, target)
 			ui_pop_id(step.ui)
 		}
 	// case runtime.Type_Info_Enumerated_Array:
@@ -322,10 +355,13 @@ editor_update_step_render_inspector :: proc(
 	// case runtime.Type_Info_Parameters:
 	case runtime.Type_Info_Struct:
 		for i in 0 ..< v.field_count {
-			field_ptr := rawptr(uintptr(ptr) + uintptr(v.offsets[i]))
+			offset := uintptr(v.offsets[i])
+			field_ptr := rawptr(uintptr(ptr) + offset)
 			ui_push_id(step.ui, v.names[i])
 			if ui_tree_node(step.ui, v.names[i], {.DefaultOpen}) {
-				editor_update_step_render_inspector(step, field_ptr, v.types[i])
+				target := target
+				target.offset = offset
+				editor_update_step_render_inspector(step, field_ptr, v.types[i], target)
 				ui_tree_pop(step.ui)
 			}
 			ui_pop_id(step.ui)
@@ -365,6 +401,7 @@ editor_inspector_window_system :: proc(step: editor_update_step) {
 						step,
 						component.data,
 						type_info_of(component.id),
+						undo_target{ptr = component.data, type = component.id, offset = 0},
 					)
 					ui_tree_pop(step.ui)
 				}
@@ -373,4 +410,24 @@ editor_inspector_window_system :: proc(step: editor_update_step) {
 		}
 	}
 	ui_end_window(step.ui)
+}
+
+
+editor_undo_system :: proc(step: editor_update_step) {
+	input, ok_input := resources_get(step.resources, input)
+	if !ok_input do return
+
+	if (input_is_key_down(input, .LEFT_CONTROL) &&
+		   !input_is_key_down(input, .LEFT_SHIFT) &&
+		   input_is_key_pressed(input, .Z)) {
+		undo_history_undo(&step.editor_state.undo_history, step.ecs_ctx)
+	}
+
+	if (input_is_key_down(input, .LEFT_CONTROL) && input_is_key_pressed(input, .Y)) ||
+	   (input_is_key_down(input, .LEFT_CONTROL) &&
+			   input_is_key_down(input, .LEFT_SHIFT) &&
+			   input_is_key_pressed(input, .Z)) {
+		undo_history_redo(&step.editor_state.undo_history, step.ecs_ctx)
+	}
+
 }

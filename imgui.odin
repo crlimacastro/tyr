@@ -53,10 +53,10 @@ imgui_ui :: proc() -> ui {
 			im.PopItemWidth()
 			im.End()
 		},
-		push_id =                 proc(id: string) {
-			im.PushID(strings.clone_to_cstring(id, allocator=context.temp_allocator))
+		push_id = proc(id: string) {
+			im.PushID(strings.clone_to_cstring(id, allocator = context.temp_allocator))
 		},
-		pop_id =                  proc() {
+		pop_id = proc() {
 			im.PopID()
 		},
 		button = proc(data: rawptr, label: string) -> bool {
@@ -297,6 +297,12 @@ imgui_ui :: proc() -> ui {
 		},
 		text = proc(text: string) {
 			im.Text(strings.clone_to_cstring(text, allocator = context.temp_allocator))
+		},
+		is_item_activated = proc() -> bool {
+			return im.IsItemActivated()
+		},
+		is_item_deactivated_after_edit = proc() -> bool {
+			return im.IsItemDeactivatedAfterEdit()
 		},
 	}
 }
